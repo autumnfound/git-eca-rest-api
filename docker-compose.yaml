@@ -1,0 +1,16 @@
+web:
+  image: 'gitlab/gitlab-ce:latest'
+  restart: always
+  environment:
+    VIRTUAL_HOST: "gitlab.dev.docker"
+    VIRTUAL_PORT: 443
+    VIRTUAL_PROTO: https
+    CERT_NAME: dev.docker
+  ports:
+    - 443
+    - 80
+    - 22
+  volumes:
+    - '/localdocker/gitlab/config:/etc/gitlab'
+    - '/localdocker/gitlab/logs:/var/log/gitlab'
+    - '/localdocker/gitlab/data:/var/opt/gitlab'
