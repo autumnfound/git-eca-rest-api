@@ -1,3 +1,12 @@
+/*******************************************************************************
+ * Copyright (C) 2020 Eclipse Foundation
+ * 
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ * 
+ * SPDX-License-Identifier: EPL-2.0
+ ******************************************************************************/
 package org.eclipsefoundation.git.eca.model;
 
 import java.util.Date;
@@ -17,7 +26,6 @@ import org.eclipsefoundation.git.eca.namespace.APIStatusCode;
  */
 public class ValidationResponse {
 	private boolean passed;
-	private APIStatusCode status;
 	private int errorCount;
 	private Date time;
 	private Map<String, CommitStatus> commits;
@@ -96,15 +104,6 @@ public class ValidationResponse {
 	 */
 	public void addError(String hash, String error, APIStatusCode code) {
 		commits.computeIfAbsent(getHashKey(hash), k -> new CommitStatus()).addError(error, code);
-	}
-	
-	public void updateStatus(APIStatusCode code) {
-		if (this.status == null) {
-			this.status = code;
-			//TODO this is _REALLY_ sloppy logic. Ask CG when have time
-		} else if (Math.abs(this.status.getValue()) < Math.abs(code.getValue())) {
-			this.status = code;
-		}
 	}
 
 	private String getHashKey(String hash) {

@@ -19,6 +19,12 @@
 		<quarkus.platform.group-id>io.quarkus</quarkus.platform.group-id>
 		<quarkus.platform.version>1.1.1.Final</quarkus.platform.version>
 		<surefire-plugin.version>2.22.1</surefire-plugin.version>
+		<sonar.sources>src/main</sonar.sources>
+		<sonar.tests>src/test</sonar.tests>
+		<sonar.java.coveragePlugin>jacoco</sonar.java.coveragePlugin>
+		<sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
+		<sonar.jacoco.reportPaths>${project.build.directory}/jacoco-report</sonar.jacoco.reportPaths>
+		<sonar.junit.reportPath>${project.build.directory}/surefire-reports</sonar.junit.reportPath>
 	</properties>
 	<dependencyManagement>
 		<dependencies>
@@ -58,11 +64,6 @@
 			<groupId>com.github.scribejava</groupId>
 			<artifactId>scribejava-apis</artifactId>
 			<version>6.4.1</version>
-		</dependency>
-		<dependency>
-			<groupId>org.gitlab4j</groupId>
-			<artifactId>gitlab4j-api</artifactId>
-			<version>4.14.11</version>
 		</dependency>
 		
 		<!-- Caching -->
@@ -131,6 +132,51 @@
 			</build>
 			<properties>
 				<quarkus.package.type>native</quarkus.package.type>
+			</properties>
+		</profile>
+		<profile>
+			<id>sonar-dev</id>
+			<build>
+				<plugins>
+					<plugin>
+						<artifactId>maven-surefire-plugin</artifactId>
+						<version>${surefire-plugin.version}</version>
+					</plugin>
+					<plugin>
+						<groupId>org.jacoco</groupId>
+						<artifactId>jacoco-maven-plugin</artifactId>
+						<version>0.8.4</version>
+						<configuration>
+							<destFile>${sonar.jacoco.reportPaths}</destFile>
+							<append>true</append>
+						</configuration>
+						<executions>
+							<execution>
+								<goals>
+									<goal>prepare-agent</goal>
+								</goals>
+							</execution>
+							<execution>
+								<id>report</id>
+								<phase>test</phase>
+								<goals>
+									<goal>report</goal>
+								</goals>
+								<configuration>
+									<outputDirectory>${sonar.jacoco.reportPaths}</outputDirectory>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.sonarsource.scanner.maven</groupId>
+						<artifactId>sonar-maven-plugin</artifactId>
+						<version>3.6.0.1398</version>
+					</plugin>
+				</plugins>
+			</build>
+			<properties>
+				<sonar.host.url>https://sonarqube.dev.docker</sonar.host.url>
 			</properties>
 		</profile>
 	</profiles>

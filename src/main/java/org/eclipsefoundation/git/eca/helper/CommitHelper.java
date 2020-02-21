@@ -1,3 +1,12 @@
+/*******************************************************************************
+ * Copyright (C) 2020 Eclipse Foundation
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ ******************************************************************************/
 package org.eclipsefoundation.git.eca.helper;
 
 import java.util.regex.Matcher;
@@ -7,16 +16,16 @@ import org.eclipsefoundation.git.eca.model.Commit;
 
 /**
  * Contains helpers for processing commits.
- * 
+ *
  * @author Martin Lowe
  *
  */
 public class CommitHelper {
-	private static final Pattern SIGNED_OFF_BY_FOOTER = Pattern.compile("Signed-off-by:(.*)<(.*@.*)>$");
+	private static final Pattern SIGNED_OFF_BY_FOOTER = Pattern.compile("Signed-off-by:(.*)<(.*@.*)>\\s*$");
 
 	/**
 	 * Validate the commits fields.
-	 * 
+	 *
 	 * @param c commit to validate
 	 * @return true if valid, otherwise false
 	 */
@@ -27,7 +36,7 @@ public class CommitHelper {
 
 		boolean valid = true;
 		// check current commit data
-		if (c.getHash() == null || c.getParents() == null) {
+		if (c.getHash() == null) {
 			valid = false;
 		}
 		// check author
@@ -45,7 +54,7 @@ public class CommitHelper {
 	/**
 	 * Retrieves the email address associated with a commit message. This is done by
 	 * processing the body and parsing out the given footer knowing its format.
-	 * 
+	 *
 	 * @param c the commit to retrieve the signed off by footer for
 	 * @return the email address in the Signed-off-by footer, or null if none could
 	 *         be found.

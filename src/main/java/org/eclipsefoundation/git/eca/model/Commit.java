@@ -1,4 +1,16 @@
+/*******************************************************************************
+ * Copyright (C) 2020 Eclipse Foundation
+ * 
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ * 
+ * SPDX-License-Identifier: EPL-2.0
+ ******************************************************************************/
 package org.eclipsefoundation.git.eca.model;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Represents a Git commit with basic data and metadata about the revision.
@@ -10,9 +22,9 @@ public class Commit {
 	private String hash;
 	private String subject;
 	private String body;
-	private String parents;
+	private List<String> parents;
 	private GitUser author;
-	private GitUser commiter;
+	private GitUser committer;
 	private boolean head;
 
 	/**
@@ -60,15 +72,15 @@ public class Commit {
 	/**
 	 * @return the parents
 	 */
-	public String getParents() {
-		return parents;
+	public List<String> getParents() {
+		return new ArrayList<>(parents);
 	}
 
 	/**
 	 * @param parents the parents to set
 	 */
-	public void setParents(String parents) {
-		this.parents = parents;
+	public void setParents(List<String> parents) {
+		this.parents = new ArrayList<>(parents);
 	}
 
 	/**
@@ -89,14 +101,14 @@ public class Commit {
 	 * @return the commiter
 	 */
 	public GitUser getCommitter() {
-		return commiter;
+		return committer;
 	}
 
 	/**
-	 * @param commiter the commiter to set
+	 * @param committer the committer to set
 	 */
-	public void setCommiter(GitUser commiter) {
-		this.commiter = commiter;
+	public void setCommitter(GitUser committer) {
+		this.committer = committer;
 	}
 
 	/**
@@ -111,24 +123,5 @@ public class Commit {
 	 */
 	public void setHead(boolean head) {
 		this.head = head;
-	}
-
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("Commit [hash=");
-		builder.append(hash);
-		builder.append(", subject=");
-		builder.append(subject);
-		builder.append(", body=");
-		builder.append(body);
-		builder.append(", parents=");
-		builder.append(parents);
-		builder.append(", author=");
-		builder.append(author);
-		builder.append(", commiter=");
-		builder.append(commiter);
-		builder.append("]");
-		return builder.toString();
 	}
 }

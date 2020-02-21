@@ -1,5 +1,15 @@
+/*******************************************************************************
+ * Copyright (C) 2020 Eclipse Foundation
+ * 
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ * 
+ * SPDX-License-Identifier: EPL-2.0
+ ******************************************************************************/
 package org.eclipsefoundation.git.eca.model;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -21,6 +31,11 @@ public class Project {
 	private List<User> committers;
 	private List<Repo> repos;
 	private String specWorkingGroup;
+	
+	public Project() {
+		this.committers = new ArrayList<>();
+		this.repos = new ArrayList<>();
+	}
 
 	/**
 	 * @return the projectId

@@ -1,3 +1,12 @@
+/*******************************************************************************
+ * Copyright (C) 2020 Eclipse Foundation
+ * 
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ * 
+ * SPDX-License-Identifier: EPL-2.0
+ ******************************************************************************/
 package org.eclipsefoundation.git.eca.service.impl;
 
 import java.io.IOException;
@@ -69,9 +78,7 @@ public class DefaultOAuthService implements OAuthService {
 					LOGGER.error("Issue communicating with OAuth server for authentication", e);
 				} catch (InterruptedException e) {
 					LOGGER.error("Authentication communication was interrupted before completion", e);
-
-					// re-throw as we shouldn't hold on to an interrupt
-					throw new RuntimeException(e);
+					Thread.currentThread().interrupt();
 				} catch (ExecutionException e) {
 					LOGGER.error("Error while retrieving access token for request", e);
 				}

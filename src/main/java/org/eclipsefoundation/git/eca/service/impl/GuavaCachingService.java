@@ -1,3 +1,12 @@
+/*******************************************************************************
+ * Copyright (C) 2020 Eclipse Foundation
+ * 
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ * 
+ * SPDX-License-Identifier: EPL-2.0
+ ******************************************************************************/
 /* Copyright (c) 2019 Eclipse Foundation and others.
  * This program and the accompanying materials are made available
  * under the terms of the Eclipse Public License 2.0
@@ -103,7 +112,6 @@ public class GuavaCachingService implements CachingService {
 	
 	@Override
 	public Set<String> getCacheKeys() {
-		// TODO we probably want to change how this is returned
 		// create a set and return all keys
 		Set<String> out = new HashSet<>();
 		caches.values().stream().forEach(c -> out.addAll(c.asMap().keySet()));

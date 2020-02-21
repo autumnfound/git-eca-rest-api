@@ -1,3 +1,12 @@
+/*******************************************************************************
+ * Copyright (C) 2020 Eclipse Foundation
+ * 
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ * 
+ * SPDX-License-Identifier: EPL-2.0
+ ******************************************************************************/
 package org.eclipsefoundation.git.eca.api;
 
 import java.util.List;
@@ -5,7 +14,6 @@ import java.util.List;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
 
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 import org.eclipsefoundation.git.eca.model.Project;
@@ -29,5 +37,5 @@ public interface ProjectsAPI {
 	 */
 	@GET
 	@Produces("application/json")
-	List<Project> getProject(@QueryParam("repoUrl") String repoUrl);
+	List<Project> getProject();
 }

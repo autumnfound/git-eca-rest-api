@@ -1,3 +1,12 @@
+/*******************************************************************************
+ * Copyright (C) 2020 Eclipse Foundation
+ * 
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ * 
+ * SPDX-License-Identifier: EPL-2.0
+ ******************************************************************************/
 package org.eclipsefoundation.git.eca.resource;
 
 import java.util.List;
@@ -40,7 +49,7 @@ import org.slf4j.LoggerFactory;
  * @author Martin Lowe
  *
  */
-@Path("/git/eca")
+@Path("/eca")
 @Consumes({ MediaType.APPLICATION_JSON })
 @Produces({ MediaType.APPLICATION_JSON })
 public class ValidationResource {
@@ -81,74 +90,98 @@ public class ValidationResource {
 		// check that we have commits to validate
 		if (req.getCommits() == null || req.getCommits().isEmpty()) {
 			addError(r, "A commit is required to validate", null);
-			r.updateStatus(APIStatusCode.ERROR_DEFAULT);
-			return r.toResponse();
 		}
 		// check that we have a repo set
 		if (req.getRepoUrl() == null) {
 			addError(r, "A base repo URL needs to be set in order to validate", null);
-			r.updateStatus(APIStatusCode.ERROR_DEFAULT);
-			return r.toResponse();
 		}
 		// check that we have a type set
 		if (req.getProvider() == null) {
 			addError(r, "A provider needs to be set to validate a request", null);
-			r.updateStatus(APIStatusCode.ERROR_DEFAULT);
-			return r.toResponse();
 		}
 
-		for (Commit c : req.getCommits()) {
-			// ensure the commit is valid, and has required fields
-			if (!CommitHelper.validateCommit(c)) {
-				addError(r, "One or more commits were invalid. Please check the payload and try again", null);
-				r.updateStatus(APIStatusCode.ERROR_DEFAULT);
-				return r.toResponse();
-			}
-			// retrieve the author + committer for the current request
-			GitUser author = c.getAuthor();
-			GitUser committer = c.getCommitter();
-
-			addMessage(r, String.format("Reviewing commit: %1$s", c.getHash()), c.getHash());
-			addMessage(r, String.format("Authored by: %1$s <%2$s>", author.getName(), author.getMail()), c.getHash());
-
-			// retrieve the eclipse account for the author
-			EclipseUser eclipseAuthor = getIdentifiedUser(author);
-			if (eclipseAuthor == null) {
-				addMessage(r, String.format("Could not find an Eclipse user with mail '%1$s' for author of commit %2$s",
-						committer.getMail(), c.getHash()), c.getHash());
-				addError(r, "Author must have an Eclipse Account", c.getHash());
-				continue;
-			}
-
-			// retrieve the eclipse account for the committer
-			EclipseUser eclipseCommitter = getIdentifiedUser(committer);
-			if (eclipseCommitter == null) {
-				addMessage(r,
-						String.format("Could not find an Eclipse user with mail '%1$s' for committer of commit %2$s",
-								committer.getMail(), c.getHash()),
-						c.getHash());
-				addError(r, "Committing user must have an Eclipse Account", c.getHash());
-				continue;
-			}
-			// validate author access to the current repo
-			validateAuthorAccess(r, c, eclipseAuthor, req.getRepoUrl());
-
-			// only committers can push on behalf of other users
-			if (!eclipseAuthor.equals(eclipseCommitter)
-					&& !isCommitter(r, eclipseCommitter, c.getHash(), req.getRepoUrl())) {
-				addMessage(r, "You are not a project committer.", c.getHash());
-				addMessage(r, "Only project committers can push on behalf of others.", c.getHash());
-				addError(r, "You must be a committer to push on behalf of others.", c.getHash());
+		// only process if we have no errors
+		if (r.getErrorCount() == 0) {
+			for (Commit c : req.getCommits()) {
+				// process the request, capturing if we should continue processing
+				boolean continueProcessing = processCommit(c, r, req);
+				// if there is a reason to stop processing, break the loop
+				if (!continueProcessing) {
+					break;
+				}
 			}
 		}
+		// depending on number of errors found, set response status
 		if (r.getErrorCount() == 0) {
 			r.setPassed(true);
-			r.updateStatus(APIStatusCode.SUCCESS_DEFAULT);
-		} else {
-			r.updateStatus(APIStatusCode.ERROR_DEFAULT);
 		}
-		r.updateStatus(APIStatusCode.ERROR_DEFAULT);
 		return r.toResponse();
+	}
+
+	/**
+	 * Process the current request, validating that the passed commit is valid. The
+	 * author and committers Eclipse Account is retrieved, which are then used to
+	 * check if the current commit is valid for the current project.
+	 * 
+	 * @param c        the commit to process
+	 * @param response the response container
+	 * @param request  the current validation request
+	 * @return true if we should continue processing, false otherwise.
+	 */
+	private boolean processCommit(Commit c, ValidationResponse response, ValidationRequest request) {
+		// ensure the commit is valid, and has required fields
+		if (!CommitHelper.validateCommit(c)) {
+			addError(response, "One or more commits were invalid. Please check the payload and try again", c.getHash());
+			return false;
+		}
+		// retrieve the author + committer for the current request
+		GitUser author = c.getAuthor();
+		GitUser committer = c.getCommitter();
+
+		addMessage(response, String.format("Reviewing commit: %1$s", c.getHash()), c.getHash());
+		addMessage(response, String.format("Authored by: %1$s <%2$s>", author.getName(), author.getMail()),
+				c.getHash());
+
+		// skip processing if a merge commit
+		if (c.getParents().size() > 1) {
+			addMessage(response,
+					String.format("Commit '%1$s' has multiple parents, merge commit detected, passing", c.getHash()),
+					c.getHash());
+			return true;
+		}
+
+		// retrieve the eclipse account for the author
+		EclipseUser eclipseAuthor = getIdentifiedUser(author);
+		if (eclipseAuthor == null) {
+			addMessage(response,
+					String.format("Could not find an Eclipse user with mail '%1$s' for author of commit %2$s",
+							committer.getMail(), c.getHash()),
+					c.getHash());
+			addError(response, "Author must have an Eclipse Account", c.getHash());
+			return true;
+		}
+
+		// retrieve the eclipse account for the committer
+		EclipseUser eclipseCommitter = getIdentifiedUser(committer);
+		if (eclipseCommitter == null) {
+			addMessage(response,
+					String.format("Could not find an Eclipse user with mail '%1$s' for committer of commit %2$s",
+							committer.getMail(), c.getHash()),
+					c.getHash());
+			addError(response, "Committing user must have an Eclipse Account", c.getHash());
+			return true;
+		}
+		// validate author access to the current repo
+		validateAuthorAccess(response, c, eclipseAuthor, request.getRepoUrl());
+
+		// only committers can push on behalf of other users
+		if (!eclipseAuthor.equals(eclipseCommitter)
+				&& !isCommitter(response, eclipseCommitter, c.getHash(), request.getRepoUrl())) {
+			addMessage(response, "You are not a project committer.", c.getHash());
+			addMessage(response, "Only project committers can push on behalf of others.", c.getHash());
+			addError(response, "You must be a committer to push on behalf of others.", c.getHash());
+		}
+		return true;
 	}
 
 	/**
@@ -166,7 +199,6 @@ public class ValidationResource {
 		// check if the author matches to an eclipse user and is a committer
 		if (isCommitter(r, eclipseAuthor, c.getHash(), repoUrl)) {
 			addMessage(r, "The author is a committer on the project.", c.getHash());
-			r.updateStatus(APIStatusCode.SUCCESS_COMMITTER);
 		} else {
 			addMessage(r, "The author is not a committer on the project.", c.getHash());
 			// check if the author is signed off if not a committer
@@ -189,8 +221,8 @@ public class ValidationResource {
 						"The author has not \"signed-off\" on the contribution.\n"
 								+ "If there are multiple commits, please ensure that each commit is signed-off.",
 						c.getHash());
-				addError(r, "The contributor must \"sign-off\" on the contribution.", c.getHash());
-				r.updateStatus(APIStatusCode.ERROR_SIGN_OFF);
+				addError(r, "The contributor must \"sign-off\" on the contribution.", c.getHash(),
+						APIStatusCode.ERROR_SIGN_OFF);
 			}
 		}
 	}
@@ -212,16 +244,22 @@ public class ValidationResource {
 	 * @return true if user is considered a committer, false otherwise.
 	 */
 	private boolean isCommitter(ValidationResponse r, EclipseUser user, String hash, String repoUrl) {
-		// TODO repo URL doesn't currently filter, so this may return false positives
-		// atm
 		// check for all projects that make use of the given repo
-		Optional<List<Project>> filteredProjects = cache.get("projects|" + repoUrl, () -> projects.getProject(repoUrl),
+		@SuppressWarnings("unchecked")
+		Optional<List<Project>> cachedProjects = cache.get("projects|" + repoUrl, () -> projects.getProject(),
 				(Class<List<Project>>) (Object) List.class);
-		if (!filteredProjects.isPresent() || filteredProjects.get().isEmpty()) {
+		if (!cachedProjects.isPresent() || cachedProjects.get().isEmpty()) {
 			return false;
 		}
+
+		// filter the projects based on the repo URL. At least one repo in project must
+		// match the repo URL to be valid
+		List<Project> filteredProjects = cachedProjects.get().stream()
+				.filter(p -> p.getRepos().stream().anyMatch(re -> re.getUrl().equals(repoUrl)))
+				.collect(Collectors.toList());
+
 		// iterate over filtered projects
-		for (Project p : filteredProjects.get()) {
+		for (Project p : filteredProjects) {
 			LOGGER.debug("Checking project '{}' for user '{}'", p.getName(), user.getName());
 
 			// check if any of the committers usernames match the current user
@@ -233,7 +271,6 @@ public class ValidationResource {
 					r.addError(hash, String.format(
 							"Project is a specification for the working group '%1$s', but user does not have permission to modify a specification project",
 							p.getSpecWorkingGroup()), APIStatusCode.ERROR_SPEC_PROJECT);
-					r.updateStatus(APIStatusCode.ERROR_SPEC_PROJECT);
 					return false;
 				} else {
 					LOGGER.debug("User '{}' was found to be a committer on current project repo '{}'", user.getMail(),
@@ -243,6 +280,7 @@ public class ValidationResource {
 			}
 
 			// get a list of all bots that Eclipse is aware of
+			@SuppressWarnings("unchecked")
 			Optional<List<BotUser>> allBots = cache.get("allBots", () -> bots.getBots(),
 					(Class<List<BotUser>>) (Object) List.class);
 			// check that we have bots to iterate over
@@ -276,6 +314,7 @@ public class ValidationResource {
 		// get the Eclipse account for the user
 		try {
 			// use cache to avoid asking for the same user repeatedly on repeated requests
+			@SuppressWarnings("unchecked")
 			Optional<List<EclipseUser>> users = cache.get("user|" + user.getMail(),
 					() -> accounts.getUsers("Bearer " + oauth.getToken(), null, null, user.getMail()),
 					(Class<List<EclipseUser>>) (Object) List.class);
@@ -296,7 +335,7 @@ public class ValidationResource {
 	}
 
 	private void addMessage(ValidationResponse r, String message, String hash) {
-		addMessage(r, hash, message, APIStatusCode.SUCCESS_DEFAULT);
+		addMessage(r, message, hash, APIStatusCode.SUCCESS_DEFAULT);
 	}
 
 	private void addError(ValidationResponse r, String message, String hash) {

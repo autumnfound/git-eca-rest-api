@@ -1,6 +1,13 @@
+/*******************************************************************************
+ * Copyright (C) 2020 Eclipse Foundation
+ * 
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ * 
+ * SPDX-License-Identifier: EPL-2.0
+ ******************************************************************************/
 package org.eclipsefoundation.git.eca.model;
-
-import java.util.Objects;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
@@ -88,49 +95,23 @@ public class EclipseUser {
 		this.isCommitter = isCommitter;
 	}
 
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("EclipseAccount [id=");
-		builder.append(uid);
-		builder.append(", name=");
-		builder.append(name);
-		builder.append(", mail=");
-		builder.append(mail);
-		builder.append(", eca=");
-		builder.append(eca);
-		builder.append(", isCommitter=");
-		builder.append(isCommitter);
-		builder.append("]");
-		return builder.toString();
-	}
-
-	@Override
-	public int hashCode() {
-		return Objects.hash(eca, isCommitter, mail, name, uid);
-	}
-
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		EclipseUser other = (EclipseUser) obj;
-		return Objects.equals(eca, other.eca) && isCommitter == other.isCommitter && Objects.equals(mail, other.mail)
-				&& Objects.equals(name, other.name) && uid == other.uid;
-	}
-
 	/**
 	 * ECA for Eclipse accounts, representing whether users have signed the Eclipse
 	 * Committer Agreement to enable contribution.
 	 */
 	@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
 	public static class ECA {
-		private boolean signed = false;
-		private boolean canContributeSpecProject = false;
+		private boolean signed;
+		private boolean canContributeSpecProject;
+		
+		public ECA() {
+			this(false, false);
+		}
+		
+		public ECA(boolean signed, boolean canContributeSpecProject) {
+			this.signed = signed;
+			this.canContributeSpecProject = canContributeSpecProject;
+		}
 
 		/**
 		 * @return the signed
@@ -158,35 +139,6 @@ public class EclipseUser {
 		 */
 		public void setCanContributeSpecProject(boolean canContributeSpecProject) {
 			this.canContributeSpecProject = canContributeSpecProject;
-		}
-
-		@Override
-		public int hashCode() {
-			return Objects.hash(signed, canContributeSpecProject);
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			if (this == obj)
-				return true;
-			if (obj == null)
-				return false;
-			if (getClass() != obj.getClass())
-				return false;
-			ECA other = (ECA) obj;
-			return signed == other.signed && canContributeSpecProject == other.canContributeSpecProject;
-		}
-
-		@Override
-		public String toString() {
-			StringBuilder builder = new StringBuilder();
-			builder.append("ECA [signed=");
-			builder.append(signed);
-			builder.append(", canContributeSpecProject=");
-			builder.append(canContributeSpecProject);
-			builder.append("]");
-			return builder.toString();
-
 		}
 	}
 }

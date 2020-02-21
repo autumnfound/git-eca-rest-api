@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: git-eca-rest-api
+  namespace: foundation-internal-webdev-apps
+spec:
+  selector:
+    matchLabels:
+      app: git-eca-rest-api
+      environment: production
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: git-eca-rest-api
+        environment: production
+    spec:
+      containers:
+      - name: app
+        image: eclipsefdn/git-eca-rest-api:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            cpu: '1'
+            memory: 512Mi
+          requests:
+            cpu: 200m
+            memory: 512Mi
+---
+apiVersion: "v1"
+kind: "Service"
+metadata:
+  name: git-eca-rest-api
+  namespace: foundation-internal-webdev-apps
+spec:
+  ports:
+  - name: "http"
+    port: 80
+    protocol: "TCP"
+    targetPort: 8080
+  selector:
+    app: git-eca-rest-api
+    environment: production
+---
+apiVersion: "route.openshift.io/v1"
+kind: "Route"
+metadata:
+  name: git-eca-rest-api
+  namespace: foundation-internal-webdev-apps
+  annotations:
+    haproxy.router.openshift.io/timeout: 20s
+spec:
+  host: "api.eclipse.org"
+  path: "/git"
+  port:
+    targetPort: "http"
+  tls:
+    insecureEdgeTerminationPolicy: "Redirect"
+    termination: "edge"
+  to:
+    kind: "Service"
+    name: git-eca-rest-api
+    weight: 100
