@@ -14,6 +14,7 @@ import java.util.List;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 import org.eclipsefoundation.git.eca.model.Project;
@@ -37,5 +38,5 @@ public interface ProjectsAPI {
 	 */
 	@GET
 	@Produces("application/json")
-	List<Project> getProject();
+	List<Project> getProject(@QueryParam("page") int page, @QueryParam("pagesize") int pageSize);
 }

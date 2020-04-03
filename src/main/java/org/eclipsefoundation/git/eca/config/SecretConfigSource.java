@@ -40,6 +40,7 @@ public class SecretConfigSource implements ConfigSource {
 	private Map<String, String> secrets;
 
 	@Override
+	@SuppressWarnings({"rawtypes", "unchecked"})
 	public Map<String, String> getProperties() {
 		if (secrets == null) {
 			this.secrets = new HashMap<>();

@@ -11,6 +11,7 @@ package org.eclipsefoundation.git.eca.api;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import javax.annotation.PostConstruct;
@@ -80,8 +81,8 @@ public class MockProjectsAPI implements ProjectsAPI {
 	}
 
 	@Override
-	public List<Project> getProject() {
-		return new ArrayList<>(src);
+	public List<Project> getProject(int page, int pageSize) {
+		return page == 1 ? new ArrayList<>(src) : Collections.emptyList();
 	}
 
 }

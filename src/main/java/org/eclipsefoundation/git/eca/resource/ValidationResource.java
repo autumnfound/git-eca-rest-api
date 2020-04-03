@@ -26,7 +26,6 @@ import javax.ws.rs.core.Response;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.eclipsefoundation.git.eca.api.AccountsAPI;
 import org.eclipsefoundation.git.eca.api.BotsAPI;
-import org.eclipsefoundation.git.eca.api.ProjectsAPI;
 import org.eclipsefoundation.git.eca.helper.CommitHelper;
 import org.eclipsefoundation.git.eca.model.BotUser;
 import org.eclipsefoundation.git.eca.model.Commit;
@@ -39,6 +38,7 @@ import org.eclipsefoundation.git.eca.namespace.APIStatusCode;
 import org.eclipsefoundation.git.eca.namespace.ProviderType;
 import org.eclipsefoundation.git.eca.service.CachingService;
 import org.eclipsefoundation.git.eca.service.OAuthService;
+import org.eclipsefoundation.git.eca.service.ProjectsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,9 +63,6 @@ public class ValidationResource {
 	AccountsAPI accounts;
 	@Inject
 	@RestClient
-	ProjectsAPI projects;
-	@Inject
-	@RestClient
 	BotsAPI bots;
 
 	// external API/service harnesses
@@ -73,7 +70,9 @@ public class ValidationResource {
 	OAuthService oauth;
 	@Inject
 	CachingService cache;
-
+	@Inject
+	ProjectsService projects;
+	
 	/**
 	 * Consuming a JSON request, this method will validate all passed commits, using
 	 * the repo URL and the repository provider. These commits will be validated to
@@ -304,25 +303,24 @@ public class ValidationResource {
 	private List<Project> retrieveProjectsForRequest(ValidationRequest req) {
 		String repoUrl = req.getRepoUrl();
 		// check for all projects that make use of the given repo
-		@SuppressWarnings("unchecked")
-		Optional<List<Project>> cachedProjects = cache.get("projects", () -> projects.getProject(),
-				(Class<List<Project>>) (Object) List.class);
-		if (!cachedProjects.isPresent() || cachedProjects.get().isEmpty()) {
+		List<Project> availableProjects = projects.getProjects();
+		if (availableProjects == null || availableProjects.isEmpty()) {
 			return Collections.emptyList();
 		}
+		LOGGER.debug("Number of projects found: {}", availableProjects.size());
 
 		// filter the projects based on the repo URL. At least one repo in project must
 		// match the repo URL to be valid
 		if (ProviderType.GITLAB.equals(req.getProvider())) {
-			return cachedProjects.get().stream()
+			return availableProjects.stream()
 					.filter(p -> p.getGitlabRepos().stream().anyMatch(re -> re.getUrl().equals(repoUrl)))
 					.collect(Collectors.toList());
 		} else if (ProviderType.GITHUB.equals(req.getProvider())) {
-			return cachedProjects.get().stream()
+			return availableProjects.stream()
 					.filter(p -> p.getGithubRepos().stream().anyMatch(re -> re.getUrl().equals(repoUrl)))
 					.collect(Collectors.toList());
 		} else {
-			return cachedProjects.get().stream()
+			return availableProjects.stream()
 					.filter(p -> p.getRepos().stream().anyMatch(re -> re.getUrl().equals(repoUrl)))
 					.collect(Collectors.toList());
 		}
