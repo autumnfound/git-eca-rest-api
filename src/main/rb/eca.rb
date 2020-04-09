@@ -72,7 +72,7 @@ commit_keys.each do |key|
     end
     puts "\n"
     commit_status['errors'].each do |error|
-      puts "ERROR: #{error['message']}"
+      puts "GL-HOOK-ERR: #{error['message']}"
     end
     puts "\n\n"
   end
