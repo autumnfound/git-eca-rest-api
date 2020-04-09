@@ -28,8 +28,11 @@ git_commits = git_commit_data.split(/\s+/)
 ## Process each of the commits, creating a line of formatted JSON data to POST
 processed_git_data = []
 git_commits.each do |commit|
+  ## Get parents separately to post-process string into array format
+  commit_parents_raw = `git show -s --format='%P' #{commit}`
+  commit_parents = commit_parents_raw.split(/\s/)
   ## Process Git data into JSON for each commit found
-  git_data = `git show -s --format='{"author": {"name":"%an","mail":"%ae"},"committer":{"name":"%cn","mail":"%ce"},"body":"%B","subject":"%s","hash":"%H", "parents":["%P"]}' #{commit}`
+  git_data = `git show -s --format='{"author": {"name":"%an","mail":"%ae"},"committer":{"name":"%cn","mail":"%ce"},"body":"%B","subject":"%s","hash":"%H", "parents":["#{commit_parents.join("\", \"")}"]}' #{commit}`
   ## Strip new lines as they FUBAR JSON parsers
   git_data = git_data.gsub(/[\n\r]/, ' ')
   processed_git_data.push(MultiJson.load(git_data))
