@@ -4,6 +4,19 @@ require 'json'
 require 'httparty'
 require 'multi_json'
 
+## read in the access token from secret file
+if (!File.file?("/etc/gitlab/eca-access-token"))
+  puts "GL-HOOK-ERR: Internal server error, please contact administrator. Error, secret not found" 
+  exit 1
+end
+access_token_file = File.open("/etc/gitlab/eca-access-token")
+access_token = access_token_file.read.chomp
+access_token_file.close
+if (access_token.empty?)
+  puts "GL-HOOK-ERR: Internal server error, please contact administrator. Error, secret not found" 
+  exit 1
+end
+
 ## Read in the arguments passed from GitLab and split them to an arg array
 stdin_raw = ARGF.read;
 stdin_args = stdin_raw.split(/\s+/)
@@ -41,11 +54,18 @@ end
 ## Get the project ID from env var, extracting from pattern 'project-###'
 project_id = ENV['GL_REPOSITORY'][8..-1]
 ## Get data about project from API
-project_response = HTTParty.get("https://gitlab.eclipse.org/api/v4/projects/#{project_id}")
+project_response = HTTParty.get("https://gitlab.eclipse.org/api/v4/projects/#{project_id}", 
+  :headers => {
+    'Authorization' => 'Bearer ' + access_token
+  })
 ## Format data to be able to easily read and process it
 project_json_data = MultiJson.load(project_response.body)
-## Get the web URL
-project_url = project_json_data['web_url']
+## Get the web URL, checking if project is a fork to get original project URL
+if (!project_json_data['forked_from_project'].nil? && !project_json_data['forked_from_project']['web_url'].nil?)
+  project_url = project_json_data['forked_from_project']['web_url']
+else 
+  project_url = project_json_data['web_url']
+end
 
 ## Create the JSON payload
 json_data = {
@@ -54,7 +74,10 @@ json_data = {
   :commits => processed_git_data
 }
 ## Generate request
-response = HTTParty.post("https://api.eclipse.org/git/eca", :body => MultiJson.dump(json_data), :headers => { 'Content-Type' => 'application/json' })
+response = HTTParty.post("https://api.eclipse.org/git/eca", :body => MultiJson.dump(json_data), 
+  :headers => { 
+    'Content-Type' => 'application/json'
+  })
 ## convert request to hash map
 parsed_response = MultiJson.load(response.body)
 
@@ -66,6 +89,12 @@ commit_keys.each do |key|
     puts "Commit: #{key}\t\t✔\n\n"
     commit_status['messages'].each do |msg|
       puts "\t#{msg['message']}"
+    end
+    if (commit_status['warnings'].empty?) then
+      commit_status['messages'].each do |msg|
+        puts "\t#{msg['message']}"
+      end
+      puts "Any warnings noted above may indicate compliance issues with committer ECA requirements. More information may be found on https://www.eclipse.org/legal/ECA.php"
     end
     puts "\n\n"
   else
