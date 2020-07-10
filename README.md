@@ -1,4 +1,4 @@
-# gitlab.cla project
+# git-eca-rest-api
 
 This project uses Quarkus, the Supersonic Subatomic Java Framework.
 
