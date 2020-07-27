@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+# encoding: UTF-8
 
 require 'json'
 require 'httparty'
@@ -47,8 +48,8 @@ git_commits.each do |commit|
   ## Process Git data into JSON for each commit found
   git_data = `git show -s --format='{"author": {"name":"%an","mail":"%ae"},"committer":{"name":"%cn","mail":"%ce"},"body":"%B","subject":"%s","hash":"%H", "parents":["#{commit_parents.join("\", \"")}"]}' #{commit}`
   ## Strip new lines as they FUBAR JSON parsers
-  git_data = git_data.gsub(/[\n\r]/, ' ')
-  processed_git_data.push(MultiJson.load(git_data))
+  git_data = git_data.force_encoding("utf-8").gsub(/[\n\r]/, ' ')
+  processed_git_data.push(MultiJson.load(git_data.force_encoding("utf-8")))
 end
 
 ## Get the project ID from env var, extracting from pattern 'project-###'
@@ -76,7 +77,8 @@ json_data = {
 ## Generate request
 response = HTTParty.post("https://api.eclipse.org/git/eca", :body => MultiJson.dump(json_data), 
   :headers => { 
-    'Content-Type' => 'application/json'
+    'Content-Type' => 'application/json',
+    'charset' => 'utf-8'
   })
 ## convert request to hash map
 parsed_response = MultiJson.load(response.body)
