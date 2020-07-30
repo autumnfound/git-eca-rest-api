@@ -93,7 +93,7 @@ commit_keys.each do |key|
       puts "\t#{msg['message']}"
     end
     if (commit_status['warnings'].empty?) then
-      commit_status['messages'].each do |msg|
+      commit_status['warnings'].each do |msg|
         puts "\t#{msg['message']}"
       end
       puts "Any warnings noted above may indicate compliance issues with committer ECA requirements. More information may be found on https://www.eclipse.org/legal/ECA.php"
