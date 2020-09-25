@@ -81,34 +81,40 @@ response = HTTParty.post("https://api.eclipse.org/git/eca", :body => MultiJson.d
     'charset' => 'utf-8'
   })
 ## convert request to hash map
-parsed_response = MultiJson.load(response.body)
-
-## for each discovered hash commit tracked by response, report if it was OK
-commit_keys = parsed_response['commits'].keys
-commit_keys.each do |key|
-  commit_status = parsed_response['commits'][key]
-  if (commit_status['errors'].empty?) then
-    puts "Commit: #{key}\t\t✔\n\n"
-    commit_status['messages'].each do |msg|
-      puts "\t#{msg['message']}"
-    end
-    if (commit_status['warnings'].empty?) then
-      commit_status['warnings'].each do |msg|
+parsed_response = Hash.new
+begin
+  parsed_response = MultiJson.load(response.body)
+rescue MultiJson::ParseError
+  puts "GL-HOOK-ERR: Unable to validate commit, server error encountered.\n\nPlease contact the administrator, and retry the commit at a later time.\n\n"
+  exit 1
+else
+  ## for each discovered hash commit tracked by response, report if it was OK
+  commit_keys = parsed_response['commits'].keys
+  commit_keys.each do |key|
+    commit_status = parsed_response['commits'][key]
+    if (commit_status['errors'].empty?) then
+      puts "Commit: #{key}\t\t✔\n\n"
+      commit_status['messages'].each do |msg|
         puts "\t#{msg['message']}"
       end
-      puts "Any warnings noted above may indicate compliance issues with committer ECA requirements. More information may be found on https://www.eclipse.org/legal/ECA.php"
+      if (commit_status['warnings'].empty?) then
+        commit_status['warnings'].each do |msg|
+          puts "\t#{msg['message']}"
+        end
+        puts "Any warnings noted above may indicate compliance issues with committer ECA requirements. More information may be found on https://www.eclipse.org/legal/ECA.php"
+      end
+      puts "\n\n"
+    else
+      puts "Commit: #{key}\t\tX\n\n"
+      commit_status['messages'].each do |msg|
+        puts "\t#{msg['message']}"
+      end
+      puts "\n"
+      commit_status['errors'].each do |error|
+        puts "GL-HOOK-ERR: #{error['message']}"
+      end
+      puts "\n\n"
     end
-    puts "\n\n"
-  else
-    puts "Commit: #{key}\t\tX\n\n"
-    commit_status['messages'].each do |msg|
-      puts "\t#{msg['message']}"
-    end
-    puts "\n"
-    commit_status['errors'].each do |error|
-      puts "GL-HOOK-ERR: #{error['message']}"
-    end
-    puts "\n\n"
   end
 end
 ## If error, exit as status 1

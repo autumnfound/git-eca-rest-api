@@ -18,6 +18,7 @@ import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
+import org.eclipse.microprofile.context.ManagedExecutor;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.eclipsefoundation.git.eca.api.ProjectsAPI;
 import org.eclipsefoundation.git.eca.model.Project;
@@ -28,6 +29,8 @@ import org.slf4j.LoggerFactory;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.ListenableFutureTask;
 
 import io.quarkus.runtime.Startup;
 
@@ -44,6 +47,9 @@ public class PagintationProjectsService implements ProjectsService {
 	private static final Logger LOGGER = LoggerFactory.getLogger(PagintationProjectsService.class);
 
 	@Inject
+	ManagedExecutor exec;
+
+	@Inject
 	@RestClient
 	ProjectsAPI projects;
 	// this class has a separate cache as this data is long to load and should be
@@ -58,11 +64,35 @@ public class PagintationProjectsService implements ProjectsService {
 	@PostConstruct
 	public void init() {
 		// set up the internal cache
-		this.internalCache = CacheBuilder.newBuilder().maximumSize(1).refreshAfterWrite(3600, TimeUnit.SECONDS)
+		this.internalCache = CacheBuilder.newBuilder().maximumSize(1).refreshAfterWrite(120, TimeUnit.SECONDS)
 				.build(new CacheLoader<String, List<Project>>() {
 					@Override
 					public List<Project> load(String key) throws Exception {
 						return getProjectsInternal();
+					}
+
+					/**
+					 * Implementation required for refreshAfterRewrite to be async rather than sync
+					 * and blocking while awaiting for expensive reload to complete.
+					 */
+					@Override
+					public ListenableFuture<List<Project>> reload(String key, List<Project> oldValue) throws Exception {
+						ListenableFutureTask<List<Project>> task = ListenableFutureTask.create(() -> {
+							LOGGER.debug("Retrieving new project data async");
+							List<Project> newProjects = oldValue;
+							try {
+								newProjects = getProjectsInternal();
+							} catch (Exception e) {
+								LOGGER.error(
+										"Error while reloading internal projects data, data will be stale for current cycle.",
+										e);
+							}
+							LOGGER.debug("Done refreshing project values");
+							return newProjects;
+						});
+						// run the task using the Quarkus managed executor
+						exec.execute(task);
+						return task;
 					}
 				});
 
