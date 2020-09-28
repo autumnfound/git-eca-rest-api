@@ -18,6 +18,7 @@ import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.context.ManagedExecutor;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.eclipsefoundation.git.eca.api.ProjectsAPI;
@@ -49,6 +50,9 @@ public class PagintationProjectsService implements ProjectsService {
 	@Inject
 	ManagedExecutor exec;
 
+	@ConfigProperty(name = "cache.pagination.refresh-frequency-seconds", defaultValue = "3600")
+	long refreshAfterWrite;
+	
 	@Inject
 	@RestClient
 	ProjectsAPI projects;
@@ -64,7 +68,7 @@ public class PagintationProjectsService implements ProjectsService {
 	@PostConstruct
 	public void init() {
 		// set up the internal cache
-		this.internalCache = CacheBuilder.newBuilder().maximumSize(1).refreshAfterWrite(120, TimeUnit.SECONDS)
+		this.internalCache = CacheBuilder.newBuilder().maximumSize(1).refreshAfterWrite(refreshAfterWrite, TimeUnit.SECONDS)
 				.build(new CacheLoader<String, List<Project>>() {
 					@Override
 					public List<Project> load(String key) throws Exception {
