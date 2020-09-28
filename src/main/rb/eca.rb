@@ -48,7 +48,7 @@ git_commits.each do |commit|
   ## Process Git data into JSON for each commit found
   git_data = `git show -s --format='{"author": {"name":"%an","mail":"%ae"},"committer":{"name":"%cn","mail":"%ce"},"body":"%B","subject":"%s","hash":"%H", "parents":["#{commit_parents.join("\", \"")}"]}' #{commit}`
   ## Strip new lines as they FUBAR JSON parsers
-  git_data = git_data.force_encoding("utf-8").gsub(/[\n\r]/, ' ')
+  git_data = git_data.force_encoding("utf-8").gsub(/[\n\r\t]/, ' ')
   processed_git_data.push(MultiJson.load(git_data.force_encoding("utf-8")))
 end
 
