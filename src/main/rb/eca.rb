@@ -56,8 +56,9 @@ project_response = HTTParty.get("https://gitlab.eclipse.org/api/v4/projects/#{pr
 ## Format data to be able to easily read and process it
 project_json_data = MultiJson.load(project_response.body)
 ## Get the web URL, checking if project is a fork to get original project URL
-if (!project_json_data['forked_from_project'].nil? && !project_json_data['forked_from_project']['web_url'].nil?)
-  project_url = project_json_data['forked_from_project']['web_url']
+if (!project_json_data['forked_from_project'].nil?) then
+  puts "Non-Eclipse project repository detected: ECA validation will be skipped.\n\nNote that any issues with sign off or committer access will be flagged upon merging into the main project repository."
+  exit 0
 else 
   project_url = project_json_data['web_url']
 end
@@ -114,33 +115,57 @@ rescue MultiJson::ParseError
   puts "GL-HOOK-ERR: Unable to validate commit, server error encountered.\n\nPlease contact the administrator, and retry the commit at a later time.\n\n"
   exit 1
 else
+  ## Tracks if warnings/errors were issued for request 
+  contained_warnings_errors = false
   ## for each discovered hash commit tracked by response, report if it was OK
   commit_keys = parsed_response['commits'].keys
   commit_keys.each do |key|
     commit_status = parsed_response['commits'][key]
-    if (commit_status['errors'].empty?) then
+
+    ## Write the commit header with symbol indicating full or mixed success, or error state
+    if (commit_status['errors'].empty? && commit_status['warnings'].empty?) then
       puts "Commit: #{key}\t\t✔\n\n"
-      commit_status['messages'].each do |msg|
-        puts "\t#{msg['message']}"
-      end
-      if (commit_status['warnings'].empty?) then
-        commit_status['warnings'].each do |msg|
-          puts "\t#{msg['message']}"
-        end
-        puts "Any warnings noted above may indicate compliance issues with committer ECA requirements. More information may be found on https://www.eclipse.org/legal/ECA.php"
-      end
-      puts "\n\n"
+    elsif (commit_status['errors'].empty?) then
+      puts "Commit: #{key}\t\t~\n\n"
     else
       puts "Commit: #{key}\t\tX\n\n"
-      commit_status['messages'].each do |msg|
+    end
+
+    ## put all of the normal messages for the commit
+    commit_status['messages'].each do |msg|
+      puts "\t#{msg['message']}"
+    end
+
+    ## write warnings if they exist
+    if (!commit_status['warnings'].empty?) then
+      contained_warnings_errors = true
+      puts "\nWarnings:"
+      commit_status['warnings'].each do |msg|
         puts "\t#{msg['message']}"
       end
-      puts "\n"
+    end
+
+    ## write errors if they exist
+    if (!commit_status['errors'].empty?) then
+      contained_warnings_errors = true
+      puts "\nErrors:"
       commit_status['errors'].each do |error|
         puts "GL-HOOK-ERR: #{error['message']}"
       end
-      puts "\n\n"
     end
+
+    ## At end, print help message for warnings/errors
+    if (!commit_status['warnings'].empty? || !commit_status['errors'].empty?) then
+      puts "Any warnings or errors noted above may indicate compliance issues with committer ECA requirements. More information may be found on https://www.eclipse.org/legal/ECA.php"
+    end
+    puts "\n\n"
+  end
+  ## after parsing 
+  if (!parsed_response.nil? && parsed_response['trackedProject'] == false) then
+    if (contained_warnings_errors) then
+      puts "Errors or warnings were encountered while validating sign-off in current request for non-project repository.\n\nValidation is currently not required for non-project repositories, continuing."
+    end
+    exit 0
   end
 end
 ## If error, exit as status 1
