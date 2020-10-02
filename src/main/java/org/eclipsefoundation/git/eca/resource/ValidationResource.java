@@ -224,13 +224,13 @@ public class ValidationResource {
 			// retrieve the email of the Signed-off-by footer
 			String signedOffBy = CommitHelper.getSignedOffByEmail(c);
 			if (signedOffBy != null && signedOffBy.equalsIgnoreCase(eclipseAuthor.getMail())) {
-				addMessage(r, "The author has \"signed-off\" on the contribution.", c.getHash());
+				addMessage(r, "The author has signed-off on the contribution.", c.getHash());
 			} else {
 				addMessage(r,
-						"The author has not \"signed-off\" on the contribution.\n"
+						"The author has not signed-off on the contribution.\n"
 								+ "If there are multiple commits, please ensure that each commit is signed-off.",
 						c.getHash());
-				addError(r, "The contributor must \"sign-off\" on the contribution.", c.getHash(),
+				addError(r, "The contributor must sign-off on the contribution.", c.getHash(),
 						APIStatusCode.ERROR_SIGN_OFF);
 
 			}
