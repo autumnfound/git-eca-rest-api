@@ -32,6 +32,7 @@ public class Project {
 	private List<Repo> repos;
 	private List<Repo> gitlabRepos;
 	private List<Repo> githubRepos;
+	private List<Repo> gerritRepos;
 	private String specWorkingGroup;
 	
 	public Project() {
@@ -39,6 +40,7 @@ public class Project {
 		this.repos = new ArrayList<>();
 		this.gitlabRepos = new ArrayList<>();
 		this.githubRepos = new ArrayList<>();
+		this.gerritRepos = new ArrayList<>();
 	}
 
 	/**
@@ -126,6 +128,20 @@ public class Project {
 	}
 
 	/**
+   * @return the gerritRepos
+   */
+  public List<Repo> getGerritRepos() {
+    return new ArrayList<>(gerritRepos);
+  }
+
+  /**
+   * @param gerritRepos the gerritRepos to set
+   */
+  public void setGerritRepos(List<Repo> gerritRepos) {
+    this.gerritRepos = new ArrayList<>(gerritRepos);
+  }
+
+  /**
 	 * @return the specWorkingGroup
 	 */
 	public String getSpecWorkingGroup() {

@@ -322,6 +322,10 @@ public class ValidationResource {
 			return availableProjects.stream()
 					.filter(p -> p.getGithubRepos().stream().anyMatch(re -> re.getUrl().endsWith(repoUrl)))
 					.collect(Collectors.toList());
+		} else if (ProviderType.GERRIT.equals(req.getProvider())) {
+			return availableProjects.stream()
+					.filter(p -> p.getGerritRepos().stream().anyMatch(re -> re.getUrl().endsWith(repoUrl)))
+					.collect(Collectors.toList());
 		} else {
 			return availableProjects.stream()
 					.filter(p -> p.getRepos().stream().anyMatch(re -> re.getUrl().endsWith(repoUrl)))
