@@ -222,7 +222,7 @@ public class ValidationResource {
         addMessage(
             r,
             "The author does not have a current Eclipse Contributor Agreement (ECA) on file.\n"
-                + "If there are multiple Typecommits, please ensure that each author has a ECA.",
+                + "If there are multiple commits, please ensure that each author has a ECA.",
             c.getHash());
         addError(r, "An Eclipse Contributor Agreement is required.", c.getHash());
       }
