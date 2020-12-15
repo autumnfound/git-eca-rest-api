@@ -17,6 +17,7 @@ import javax.enterprise.context.ApplicationScoped;
 
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.eclipsefoundation.git.eca.model.BotUser;
+import org.eclipsefoundation.git.eca.model.BotUser.SiteSpecificBot;
 
 import io.quarkus.test.Mock;
 
@@ -42,6 +43,10 @@ public class MockBotsAPI implements BotsAPI {
 		b2.setEmail("2.bot@eclipse.org");
 		b2.setProjectId("sample.proto");
 		b2.setUsername("protobot");
+		SiteSpecificBot ssbGH = new SiteSpecificBot();
+		ssbGH.setEmail("2.bot-github@eclipse.org");
+		ssbGH.setUsername("protobot-gh");
+		b2.setGithubBot(ssbGH);
 		src.add(b2);
 		
 		BotUser b3 = new BotUser();
@@ -49,6 +54,10 @@ public class MockBotsAPI implements BotsAPI {
 		b3.setEmail("3.bot@eclipse.org");
 		b3.setProjectId("spec.proj");
 		b3.setUsername("specbot");
+		SiteSpecificBot ssbGL = new SiteSpecificBot();
+		ssbGL.setEmail("3.bot-gitlab@eclipse.org");
+		ssbGL.setUsername("protobot-gl");
+		b3.setGitlabBot(ssbGL);
 		src.add(b3);
 	}
 

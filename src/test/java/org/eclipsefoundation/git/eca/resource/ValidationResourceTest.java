@@ -1,12 +1,10 @@
 /**
- * Copyright (C) 2020
- * Eclipse Foundation
+ * Copyright (C) 2020 Eclipse Foundation
  *
  * <p>This program and the accompanying materials are made available under the terms of the Eclipse
  * Public License 2.0 which is available at https://www.eclipse.org/legal/epl-2.0/
  *
  * <p>SPDX-License-Identifier: EPL-2.0
- * 
  */
 package org.eclipsefoundation.git.eca.resource;
 
@@ -665,14 +663,165 @@ class ValidationResourceTest {
     vr.setRepoUrl(new URI("http://www.github.com/eclipsefdn/sample-not-tracked"));
     vr.setCommits(commits);
     // test output w/ assertions
-    // Error should be singular + that there's no Eclipse Account on file for committer
-    // Status 403 (forbidden) is the standard return for invalid requests
-    given()
-        .body(vr)
-        .contentType(ContentType.JSON)
-        .when()
-        .post("/eca")
-        .then()
-        .statusCode(200);
+    // Should be valid as project is not tracked
+    given().body(vr).contentType(ContentType.JSON).when().post("/eca").then().statusCode(200);
+  }
+
+  @Test
+  void validateBotCommiterAccessGithub() throws URISyntaxException {
+    // set up test users
+    GitUser g1 = new GitUser();
+    g1.setName("protobot-gh");
+    g1.setMail("2.bot-github@eclipse.org");
+
+    List<Commit> commits = new ArrayList<>();
+    // create sample commits
+    Commit c1 = new Commit();
+    c1.setAuthor(g1);
+    c1.setCommitter(g1);
+    c1.setHash("123456789abcdefghijklmnop");
+    c1.setSubject("All of the things");
+    c1.setParents(Arrays.asList("46bb69bf6aa4ed26b2bf8c322ae05bef0bcc5c10"));
+    commits.add(c1);
+
+    ValidationRequest vr = new ValidationRequest();
+    vr.setProvider(ProviderType.GITHUB);
+    vr.setRepoUrl(new URI("http://www.github.com/eclipsefdn/sample"));
+    vr.setCommits(commits);
+    // test output w/ assertions
+    // Should be valid as bots don't need sign off and should be valid on any proj
+    given().body(vr).contentType(ContentType.JSON).when().post("/eca").then().statusCode(200);
+  }
+
+  @Test
+  void validateBotCommiterAccessGithub_wrongEmail() throws URISyntaxException {
+    // set up test users - uses Gerrit/LDAP email (wrong for case)
+    GitUser g1 = new GitUser();
+    g1.setName("protobot");
+    g1.setMail("2.bot@eclipse.org");
+
+    List<Commit> commits = new ArrayList<>();
+    // create sample commits
+    Commit c1 = new Commit();
+    c1.setAuthor(g1);
+    c1.setCommitter(g1);
+    c1.setHash("123456789abcdefghijklmnop");
+    c1.setSubject("All of the things");
+    c1.setParents(Arrays.asList("46bb69bf6aa4ed26b2bf8c322ae05bef0bcc5c10"));
+    commits.add(c1);
+
+    ValidationRequest vr = new ValidationRequest();
+    vr.setProvider(ProviderType.GITHUB);
+    vr.setRepoUrl(new URI("http://www.github.com/eclipsefdn/sample"));
+    vr.setCommits(commits);
+    // test output w/ assertions
+    // Should be invalid as wrong email was used for bot (uses Gerrit bot email)
+    given().body(vr).contentType(ContentType.JSON).when().post("/eca").then().statusCode(403);
+  }
+
+  @Test
+  void validateBotCommiterAccessGitlab() throws URISyntaxException {
+    // set up test users
+    GitUser g1 = new GitUser();
+    g1.setName("specbot-gh");
+    g1.setMail("3.bot-gitlab@eclipse.org");
+
+    List<Commit> commits = new ArrayList<>();
+    // create sample commits
+    Commit c1 = new Commit();
+    c1.setAuthor(g1);
+    c1.setCommitter(g1);
+    c1.setHash("123456789abcdefghijklmnop");
+    c1.setSubject("All of the things");
+    c1.setParents(Arrays.asList("46bb69bf6aa4ed26b2bf8c322ae05bef0bcc5c10"));
+    commits.add(c1);
+
+    ValidationRequest vr = new ValidationRequest();
+    vr.setProvider(ProviderType.GITLAB);
+    vr.setRepoUrl(new URI("https://gitlab.eclipse.org/eclipse/dash/dash.handbook.test"));
+    vr.setCommits(commits);
+    // test output w/ assertions
+    // Should be valid as bots don't need sign off and should be valid on any proj
+    given().body(vr).contentType(ContentType.JSON).when().post("/eca").then().statusCode(200);
+  }
+
+  @Test
+  void validateBotCommiterAccessGitlab_wrongEmail() throws URISyntaxException {
+    // set up test users - uses Gerrit/LDAP email (wrong for case)
+    GitUser g1 = new GitUser();
+    g1.setName("specbot");
+    g1.setMail("3.bot@eclipse.org");
+
+    List<Commit> commits = new ArrayList<>();
+    // create sample commits
+    Commit c1 = new Commit();
+    c1.setAuthor(g1);
+    c1.setCommitter(g1);
+    c1.setHash("123456789abcdefghijklmnop");
+    c1.setSubject("All of the things");
+    c1.setParents(Arrays.asList("46bb69bf6aa4ed26b2bf8c322ae05bef0bcc5c10"));
+    commits.add(c1);
+
+    ValidationRequest vr = new ValidationRequest();
+    vr.setProvider(ProviderType.GITLAB);
+    vr.setRepoUrl(new URI("https://gitlab.eclipse.org/eclipse/dash/dash.git"));
+    vr.setCommits(commits);
+    // test output w/ assertions
+    // Should be invalid as wrong email was used for bot (uses Gerrit bot email)
+    given().body(vr).contentType(ContentType.JSON).when().post("/eca").then().statusCode(403);
+  }
+
+  @Test
+  void validateBotCommiterAccessGerrit() throws URISyntaxException {
+    // set up test users
+    GitUser g1 = new GitUser();
+    g1.setName("protobot");
+    g1.setMail("2.bot@eclipse.org");
+
+    List<Commit> commits = new ArrayList<>();
+    // create sample commits
+    Commit c1 = new Commit();
+    c1.setAuthor(g1);
+    c1.setCommitter(g1);
+    c1.setHash("123456789abcdefghijklmnop");
+    c1.setSubject("All of the things");
+    c1.setParents(Arrays.asList("46bb69bf6aa4ed26b2bf8c322ae05bef0bcc5c10"));
+    commits.add(c1);
+
+    ValidationRequest vr = new ValidationRequest();
+    vr.setProvider(ProviderType.GERRIT);
+    vr.setRepoUrl(new URI("/gitroot/sample/gerrit.other-project"));
+    vr.setCommits(commits);
+    vr.setStrictMode(true);
+    // test output w/ assertions
+    // Should be valid as bots don't need sign off and should be valid on any proj
+    given().body(vr).contentType(ContentType.JSON).when().post("/eca").then().statusCode(200);
+  }
+
+  @Test
+  void validateBotCommiterAccessGerrit_wrongEmail() throws URISyntaxException {
+    // set up test users - uses Gerrit/LDAP email (wrong for case)
+    GitUser g1 = new GitUser();
+    g1.setName("protobot-gh");
+    g1.setMail("2.bot-github@eclipse.org");
+
+    List<Commit> commits = new ArrayList<>();
+    // create sample commits
+    Commit c1 = new Commit();
+    c1.setAuthor(g1);
+    c1.setCommitter(g1);
+    c1.setHash("123456789abcdefghijklmnop");
+    c1.setSubject("All of the things");
+    c1.setParents(Arrays.asList("46bb69bf6aa4ed26b2bf8c322ae05bef0bcc5c10"));
+    commits.add(c1);
+
+    ValidationRequest vr = new ValidationRequest();
+    vr.setProvider(ProviderType.GERRIT);
+    vr.setRepoUrl(new URI("/gitroot/sample/gerrit.other-project"));
+    vr.setCommits(commits);
+    vr.setStrictMode(true);
+    // test output w/ assertions
+    // Should be invalid as wrong email was used for bot (uses Gerrit bot email)
+    given().body(vr).contentType(ContentType.JSON).when().post("/eca").then().statusCode(403);
   }
 }
