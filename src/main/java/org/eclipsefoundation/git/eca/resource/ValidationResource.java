@@ -415,7 +415,7 @@ public class ValidationResource {
   private List<BotUser> getBots() {
     Optional<List<BotUser>> allBots =
         cache.get("allBots", () -> bots.getBots(), (Class<List<BotUser>>) (Object) List.class);
-    if (allBots.isEmpty()) {
+    if (!allBots.isPresent()) {
       return Collections.emptyList();
     }
     return allBots.get();
