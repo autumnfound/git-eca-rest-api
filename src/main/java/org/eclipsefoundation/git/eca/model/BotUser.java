@@ -20,8 +20,10 @@ public class BotUser {
   private String projectId;
   private String username;
   private String email;
+
   @JsonProperty("github.com")
   private SiteSpecificBot githubBot;
+
   @JsonProperty("gitlab.eclipse.org")
   private SiteSpecificBot gitlabBot;
 
@@ -60,38 +62,51 @@ public class BotUser {
     return email;
   }
 
-  /**
- * @return the githubBot
- */
-public SiteSpecificBot getGithubBot() {
-return githubBot;}
+  /** @return the githubBot */
+  public SiteSpecificBot getGithubBot() {
+    return githubBot;
+  }
 
-/**
- * @param githubBot the githubBot to set
- */
-public void setGithubBot(SiteSpecificBot githubBot) {
-this.githubBot = githubBot;}
+  /** @param githubBot the githubBot to set */
+  public void setGithubBot(SiteSpecificBot githubBot) {
+    this.githubBot = githubBot;
+  }
 
-/**
- * @return the gitlabBot
- */
-public SiteSpecificBot getGitlabBot() {
-return gitlabBot;}
+  /** @return the gitlabBot */
+  public SiteSpecificBot getGitlabBot() {
+    return gitlabBot;
+  }
 
-/**
- * @param gitlabBot the gitlabBot to set
- */
-public void setGitlabBot(SiteSpecificBot gitlabBot) {
-this.gitlabBot = gitlabBot;}
+  /** @param gitlabBot the gitlabBot to set */
+  public void setGitlabBot(SiteSpecificBot gitlabBot) {
+    this.gitlabBot = gitlabBot;
+  }
 
-/** @param email the email to set */
+  /** @param email the email to set */
   public void setEmail(String email) {
     this.email = email;
   }
 
-  @Override public String toString(){StringBuilder builder=new StringBuilder();builder.append("BotUser [id=");builder.append(id);builder.append(", projectId=");builder.append(projectId);builder.append(", username=");builder.append(username);builder.append(", email=");builder.append(email);builder.append(", githubBot=");builder.append(githubBot);builder.append(", gitlabBot=");builder.append(gitlabBot);builder.append("]");return builder.toString();}
+  @Override
+  public String toString() {
+    StringBuilder builder = new StringBuilder();
+    builder.append("BotUser [id=");
+    builder.append(id);
+    builder.append(", projectId=");
+    builder.append(projectId);
+    builder.append(", username=");
+    builder.append(username);
+    builder.append(", email=");
+    builder.append(email);
+    builder.append(", githubBot=");
+    builder.append(githubBot);
+    builder.append(", gitlabBot=");
+    builder.append(gitlabBot);
+    builder.append("]");
+    return builder.toString();
+  }
 
-public static class SiteSpecificBot {
+  public static class SiteSpecificBot {
     private String username;
     private String email;
 
