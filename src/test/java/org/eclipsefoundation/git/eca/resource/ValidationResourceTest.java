@@ -671,6 +671,32 @@ class ValidationResourceTest {
   void validateBotCommiterAccessGithub() throws URISyntaxException {
     // set up test users
     GitUser g1 = new GitUser();
+    g1.setName("grunter");
+    g1.setMail("grunt@important.co");
+
+    List<Commit> commits = new ArrayList<>();
+    // create sample commits
+    Commit c1 = new Commit();
+    c1.setAuthor(g1);
+    c1.setCommitter(g1);
+    c1.setHash("123456789abcdefghijklmnop");
+    c1.setSubject("All of the things");
+    c1.setParents(Arrays.asList("46bb69bf6aa4ed26b2bf8c322ae05bef0bcc5c10"));
+    commits.add(c1);
+
+    ValidationRequest vr = new ValidationRequest();
+    vr.setProvider(ProviderType.GITHUB);
+    vr.setRepoUrl(new URI("http://www.github.com/eclipsefdn/sample"));
+    vr.setCommits(commits);
+    // test output w/ assertions
+    // Should be valid as user is a committer
+    given().body(vr).contentType(ContentType.JSON).when().post("/eca").then().statusCode(200);
+  }
+
+  @Test
+  void validateBotCommiterAccessGithub_invalidBot() throws URISyntaxException {
+    // set up test users
+    GitUser g1 = new GitUser();
     g1.setName("protobot-gh");
     g1.setMail("2.bot-github@eclipse.org");
 
@@ -689,8 +715,8 @@ class ValidationResourceTest {
     vr.setRepoUrl(new URI("http://www.github.com/eclipsefdn/sample"));
     vr.setCommits(commits);
     // test output w/ assertions
-    // Should be valid as bots don't need sign off and should be valid on any proj
-    given().body(vr).contentType(ContentType.JSON).when().post("/eca").then().statusCode(200);
+    // Should be invalid as bots should only commit on their own projects (including aliases)
+    given().body(vr).contentType(ContentType.JSON).when().post("/eca").then().statusCode(403);
   }
 
   @Test
@@ -723,7 +749,7 @@ class ValidationResourceTest {
   void validateBotCommiterAccessGitlab() throws URISyntaxException {
     // set up test users
     GitUser g1 = new GitUser();
-    g1.setName("specbot-gh");
+    g1.setName("specbot-gl");
     g1.setMail("3.bot-gitlab@eclipse.org");
 
     List<Commit> commits = new ArrayList<>();
@@ -741,13 +767,13 @@ class ValidationResourceTest {
     vr.setRepoUrl(new URI("https://gitlab.eclipse.org/eclipse/dash/dash.handbook.test"));
     vr.setCommits(commits);
     // test output w/ assertions
-    // Should be valid as bots don't need sign off and should be valid on any proj
-    given().body(vr).contentType(ContentType.JSON).when().post("/eca").then().statusCode(200);
+    // Should be invalid as bots should only commit on their own projects
+    given().body(vr).contentType(ContentType.JSON).when().post("/eca").then().statusCode(403);
   }
 
   @Test
   void validateBotCommiterAccessGitlab_wrongEmail() throws URISyntaxException {
-    // set up test users - uses Gerrit/LDAP email (wrong for case)
+    // set up test users - uses Gerrit/LDAP email (expects Gitlab email)
     GitUser g1 = new GitUser();
     g1.setName("specbot");
     g1.setMail("3.bot@eclipse.org");
@@ -768,7 +794,7 @@ class ValidationResourceTest {
     vr.setCommits(commits);
     // test output w/ assertions
     // Should be invalid as wrong email was used for bot (uses Gerrit bot email)
-    given().body(vr).contentType(ContentType.JSON).when().post("/eca").then().statusCode(403);
+    given().body(vr).contentType(ContentType.JSON).when().post("/eca").then().statusCode(200);
   }
 
   @Test
@@ -794,13 +820,13 @@ class ValidationResourceTest {
     vr.setCommits(commits);
     vr.setStrictMode(true);
     // test output w/ assertions
-    // Should be valid as bots don't need sign off and should be valid on any proj
+    // Should be valid as bots should only commit on their own projects (including aliases)
     given().body(vr).contentType(ContentType.JSON).when().post("/eca").then().statusCode(200);
   }
 
   @Test
-  void validateBotCommiterAccessGerrit_wrongEmail() throws URISyntaxException {
-    // set up test users - uses Gerrit/LDAP email (wrong for case)
+  void validateBotCommiterAccessGerrit_aliasEmail() throws URISyntaxException {
+    // set up test users - uses GH (instead of expected Gerrit/LDAP email)
     GitUser g1 = new GitUser();
     g1.setName("protobot-gh");
     g1.setMail("2.bot-github@eclipse.org");
@@ -821,7 +847,7 @@ class ValidationResourceTest {
     vr.setCommits(commits);
     vr.setStrictMode(true);
     // test output w/ assertions
-    // Should be invalid as wrong email was used for bot (uses Gerrit bot email)
-    given().body(vr).contentType(ContentType.JSON).when().post("/eca").then().statusCode(403);
+    // Should be valid as bots should only commit on their own projects (including aliases)
+    given().body(vr).contentType(ContentType.JSON).when().post("/eca").then().statusCode(200);
   }
 }
