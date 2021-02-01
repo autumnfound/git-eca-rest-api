@@ -4,6 +4,24 @@ This project uses Quarkus, the Supersonic Subatomic Java Framework.
 
 If you want to learn more about Quarkus, please visit its website: https://quarkus.io/ .
 
+## What is a valid commit?
+To be considered a valid commit, the following set of rules are checked against all commits that are submitted to this service. If any fail and the commit is related to a project, the service returns a message indicating the commit is not suitable for submission along with messages as hints.
+
+1. All users that commit to a project within the Eclipse space must have a signed [ECA](https://accounts.eclipse.org/user/eca), and therefore, Eclipse accounts. 
+    - The one exception to this rule is registered bot users, as they cannot sign an [ECA](https://accounts.eclipse.org/user/eca).
+    - Users covered by an MCCA are also covered, as it is considered an equivalent document in the eyes of contribution access.
+2. Contributing users must sign off on their commits using the `Signed-off-by` footer (example below).
+example) Signed-off-by: Martin Lowe <martin.lowe@eclipse-foundation.org>  
+    - Bot users and committers for a project are exempt from this rule, as they are covered by other agreements. If a bot is required for a project, it can be registered through the [bot API](https://github.com/EclipseFdn/projects-bots-api).
+    - When committing to a project, a bot must be registered to the particular project or the commit is rejected ([#45](https://github.com/EclipseFdn/git-eca-rest-api/issues/45)).
+    - Additionally, if a bot user makes a commit to a repository from an email address tracked for a different service, that commit is still considered valid ([#45](https://github.com/EclipseFdn/git-eca-rest-api/issues/45)).
+3. The committing user must be the same as the authoring user.  
+    - The one exception to this is when the committing user is a project committer, who may commit on behalf of other users  
+4. Requests made to non-project repositories by default will be allowed to pass with warnings to enable [ECA](https://accounts.eclipse.org/user/eca) validation to be run across a system with projects or repositories not directly managed by the Eclipse Foundation, such as forks or supporting projects ([#26](https://github.com/EclipseFdn/git-eca-rest-api/issues/26)).
+    - Within the API, a request can be made under 'strict mode' to enforce contribution guidelines within repositories not covered by an active project ([#43](https://github.com/EclipseFdn/git-eca-rest-api/pull/43)). 
+
+While these rules apply to all project repositories, any non-project repositories will also be checked. The messages indicate the failures as warnings to the consuming service (like Gitlab or Gerrit) unless 'strict mode' is enabled for the service. Whether or not a repository is tracked (or if it is a project repository) is determined by its presence as a repository directly linked to an active project within the [PMI](https://projects.eclipse.org/), as reported by the [Projects API](https://api.eclipse.org/#tag/Projects). 
+
 ## Running the application in dev mode
 
 You can run your application in dev mode that enables live coding using:
