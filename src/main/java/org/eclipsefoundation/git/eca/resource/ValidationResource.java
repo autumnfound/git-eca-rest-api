@@ -349,7 +349,8 @@ public class ValidationResource {
      */
     private boolean checkFieldsForMatchingMail(JsonNode bot, String mail) {
         // check the root email for the bot for match
-        if (mail.equalsIgnoreCase(bot.get("email").asText(""))) {
+        JsonNode botmail = bot.get("email");
+        if (mail != null && botmail != null && mail.equalsIgnoreCase(botmail.asText(""))) {
             return true;
         }
         Iterator<Entry<String, JsonNode>> i = bot.fields();
@@ -360,7 +361,8 @@ public class ValidationResource {
             if (node.isObject()) {
                 LOGGER.debug("Checking {} for bot email", e.getKey());
                 // if the mail matches (ignoring case) user is bot
-                if (mail.equalsIgnoreCase(node.get("email").asText(""))) {
+                JsonNode botAliasMail = node.get("email");
+                if (mail != null && botAliasMail != null && mail.equalsIgnoreCase(botAliasMail.asText(""))) {
                     LOGGER.debug("Found match for bot email {}", mail);
                     return true;
                 }

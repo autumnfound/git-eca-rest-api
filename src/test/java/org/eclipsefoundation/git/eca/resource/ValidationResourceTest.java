@@ -985,4 +985,33 @@ class ValidationResourceTest {
     // Should be valid as wrong email was used, but is still bot email alias 
     given().body(vr).contentType(ContentType.JSON).when().post("/eca").then().statusCode(200);
   }
+
+  @Test
+  void validateNullEmailCheck() throws URISyntaxException {
+      // set up test users - uses GH (instead of expected Gerrit/LDAP email)
+      GitUser g1 = new GitUser();
+      g1.setName("protobot-gh");
+      g1.setMail("2.bot-github@eclipse.org");
+      GitUser g2 = new GitUser();
+      g2.setName("protobot-gh");
+
+      List<Commit> commits = new ArrayList<>();
+      // create sample commits
+      Commit c1 = new Commit();
+      c1.setAuthor(g1);
+      c1.setCommitter(g2);
+      c1.setHash("123456789abcdefghijklmnop");
+      c1.setSubject("All of the things");
+      c1.setParents(Arrays.asList("46bb69bf6aa4ed26b2bf8c322ae05bef0bcc5c10"));
+      commits.add(c1);
+
+      ValidationRequest vr = new ValidationRequest();
+      vr.setProvider(ProviderType.GERRIT);
+      vr.setRepoUrl(new URI("/gitroot/sample/gerrit.other-project"));
+      vr.setCommits(commits);
+      vr.setStrictMode(true);
+      // test output w/ assertions
+      // Should be invalid as there is no email (refuse commit, not server error)
+      given().body(vr).contentType(ContentType.JSON).when().post("/eca").then().statusCode(403);
+  }
 }
