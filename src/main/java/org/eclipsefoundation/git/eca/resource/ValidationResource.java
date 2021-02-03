@@ -10,7 +10,9 @@ package org.eclipsefoundation.git.eca.resource;
 
 import java.net.MalformedURLException;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -42,6 +44,8 @@ import org.eclipsefoundation.git.eca.service.OAuthService;
 import org.eclipsefoundation.git.eca.service.ProjectsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.databind.JsonNode;
 
 /**
  * ECA validation endpoint for Git commits. Will use information from the bots, projects, and
@@ -194,7 +198,7 @@ public class ValidationResource {
                 committer.getMail(), c.getHash()),
             c.getHash());
         eclipseCommitter = EclipseUser.createBotStub(committer);
-      } else if (!userIsABot(committer.getMail(), provider)) {
+      } else if (!userIsABot(committer.getMail(), filteredProjects)) {
         addMessage(
             response,
             String.format(
@@ -313,26 +317,57 @@ public class ValidationResource {
     return false;
   }
 
-  private boolean userIsABot(String mail, ProviderType provider) {
-    if (mail == null || "".equals(mail.trim())) {
-      return false;
+    private boolean userIsABot(String mail, List<Project> filteredProjects) {
+        if (mail == null || "".equals(mail.trim())) {
+            return false;
+        }
+        List<JsonNode> botObjs = getBots();
+        // if there are no matching projects, then check against all bots, not just project bots
+        if (filteredProjects == null || filteredProjects.isEmpty()) {
+            return botObjs.stream().anyMatch(bot -> checkFieldsForMatchingMail(bot, mail));
+        }
+        // for each of the matched projects, check the bot for the matching project ID
+        for (Project p : filteredProjects) {
+            LOGGER.debug("Checking project {} for matching bots", p.getProjectId());
+            for (JsonNode bot : botObjs) {
+                // if the project ID match, and one of the email fields matches, then user is bot
+                if (p.getProjectId().equalsIgnoreCase(bot.get("projectId").asText())
+                        && checkFieldsForMatchingMail(bot, mail)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
-    return getBots()
-        .stream()
-        .anyMatch(
-            bot -> {
-              if (ProviderType.GITHUB.equals(provider)) {
-                return bot.getGithubBot() != null
-                    && mail.equalsIgnoreCase(bot.getGithubBot().getEmail());
-              } else if (ProviderType.GITLAB.equals(provider)) {
-                return bot.getGitlabBot() != null
-                    && mail.equalsIgnoreCase(bot.getGitlabBot().getEmail());
-              } else {
-                return mail.equalsIgnoreCase(bot.getEmail());
-              }
-            });
-  }
 
+    /**
+     * Checks JSON node to look for email fields, both at the root, and nested email fields.
+     * 
+     * @param bot the bots JSON object representation
+     * @param mail the email to match against
+     * @return true if the bot has a matching email value, otherwise false
+     */
+    private boolean checkFieldsForMatchingMail(JsonNode bot, String mail) {
+        // check the root email for the bot for match
+        if (mail.equalsIgnoreCase(bot.get("email").asText(""))) {
+            return true;
+        }
+        Iterator<Entry<String, JsonNode>> i = bot.fields();
+        while (i.hasNext()) {
+            Entry<String, JsonNode> e = i.next();
+            // check that our field is an object with fields
+            JsonNode node = e.getValue();
+            if (node.isObject()) {
+                LOGGER.debug("Checking {} for bot email", e.getKey());
+                // if the mail matches (ignoring case) user is bot
+                if (mail.equalsIgnoreCase(node.get("email").asText(""))) {
+                    LOGGER.debug("Found match for bot email {}", mail);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
   private boolean isAllowedUser(String mail) {
     return allowListUsers.indexOf(mail) != -1;
   }
