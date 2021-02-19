@@ -55,6 +55,10 @@ project_response = HTTParty.get("https://gitlab.eclipse.org/api/v4/projects/#{pr
   })
 ## Format data to be able to easily read and process it
 project_json_data = MultiJson.load(project_response.body)
+if (project_json_data.nil? || project_json_data.class.name == 'Array') then
+  puts "Couldn't load project data, assumed non-tracked project and skipping validation."
+  exit 0
+end
 ## Get the web URL, checking if project is a fork to get original project URL
 if (!project_json_data['forked_from_project'].nil?) then
   puts "Non-Eclipse project repository detected: ECA validation will be skipped.\n\nNote that any issues with sign off or committer access will be flagged upon merging into the main project repository."
