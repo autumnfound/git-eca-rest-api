@@ -242,22 +242,6 @@ public class ValidationResource {
             c.getHash());
         addError(r, "An Eclipse Contributor Agreement is required.", c.getHash());
       }
-
-      // check if one of the signed off by footer lines matches the author email.
-      if (CommitHelper.getSignedOffByEmail(c)) {
-        addMessage(r, "The author has signed-off on the contribution.", c.getHash());
-      } else {
-        addMessage(
-            r,
-            "The author has not signed-off on the contribution.\n"
-                + "If there are multiple commits, please ensure that each commit is signed-off.",
-            c.getHash());
-        addError(
-            r,
-            "The contributor must sign-off on the contribution.",
-            c.getHash(),
-            APIStatusCode.ERROR_SIGN_OFF);
-      }
     }
   }
 
@@ -347,6 +331,7 @@ public class ValidationResource {
     // check for all projects that make use of the given repo
     List<Project> availableProjects = projects.getProjects();
     if (availableProjects == null || availableProjects.isEmpty()) {
+      LOGGER.warn("Could not find any projects to match against");
       return Collections.emptyList();
     }
     LOGGER.debug("Checking projects for repos that end with: {}", repoUrl);

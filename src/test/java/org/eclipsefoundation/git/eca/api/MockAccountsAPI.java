@@ -93,7 +93,7 @@ public class MockAccountsAPI implements AccountsAPI {
 			if (name != null && !user.getName().equals(name)) {
 				matches = false;
 			}
-			if (mail != null && !user.getMail().equals(mail)) {
+			if (mail != null && !user.getMail().equalsIgnoreCase(mail)) {
 				matches = false;
 			}
 			return matches;

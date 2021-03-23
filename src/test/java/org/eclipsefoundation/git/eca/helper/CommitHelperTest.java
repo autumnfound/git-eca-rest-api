@@ -52,66 +52,6 @@ class CommitHelperTest {
 	}
 
 	@Test
-	void getSignedOffByEmailNullCommit() {
-		Assertions.assertFalse(CommitHelper.getSignedOffByEmail(null), "Expected null return for null commit");
-	}
-
-	@Test
-	void getSignedOffByEmailOnlyFooter() {
-		baseCommit.setBody(String.format("Signed-off-by: %s <%s>", testUser.getName(), testUser.getMail()));
-		boolean actual = CommitHelper.getSignedOffByEmail(baseCommit);
-		Assertions.assertTrue(actual);
-	}
-	@Test
-	void getSignedOffByEmailWithDifferentCasing() {
-		baseCommit.setBody(String.format("Signed-off-by: %s <%s>", testUser.getName(), testUser.getMail().toUpperCase()));
-		boolean actual = CommitHelper.getSignedOffByEmail(baseCommit);
-		Assertions.assertTrue(actual);
-	}
-
-	@Test
-	void getSignedOffByEmailBodyAndFooter() {
-		baseCommit.setBody(
-				String.format("Sample body content\n\nSigned-off-by: %s <%s>", testUser.getName(), testUser.getMail()));
-		boolean actualMail = CommitHelper.getSignedOffByEmail(baseCommit);
-		Assertions.assertTrue(actualMail);
-	}
-
-	@Test
-	void getSignedOffByEmailNoNameFooter() {
-		baseCommit.setBody(
-				String.format("Sample body content\n\nSigned-off-by:<%s>", testUser.getMail()));
-		boolean actual = CommitHelper.getSignedOffByEmail(baseCommit);
-		Assertions.assertTrue(actual);
-	}
-
-	@Test
-	void getSignedOffByEmailNoBrackets() {
-		baseCommit.setBody(
-				String.format("Sample body content\n\nSigned-off-by:%s", testUser.getMail()));
-		boolean actual = CommitHelper.getSignedOffByEmail(baseCommit);
-		Assertions.assertFalse(actual);
-	}
-
-	@Test
-	void getSignedOffByEmailBadFooterName() {
-		baseCommit.setBody(
-				String.format("Sample body content\n\nSign-off-by: %s <%s>", testUser.getName(), testUser.getMail()));
-		Assertions.assertFalse(CommitHelper.getSignedOffByEmail(baseCommit), "Expected false with typo in footer name");
-		
-		baseCommit.setBody(
-				String.format("Sample body content\n\nSIGNED-OFF-BY: %s <%s>", testUser.getName(), testUser.getMail()));
-		Assertions.assertFalse(CommitHelper.getSignedOffByEmail(baseCommit), "Expected false with bad casing");
-	}
-
-	@Test
-	void getSignedOffByEmailBadAuthorEmail() {
-		baseCommit.setBody(
-				String.format("Sample body content\n\nSigned-off-by: %s <%s>", testUser.getName(), "known_bad@email.org"));
-		Assertions.assertFalse(CommitHelper.getSignedOffByEmail(baseCommit), "Expected false with typo in footer name");
-	}
-
-	@Test
 	void validateCommitKnownGood() {
 		Assertions.assertTrue(CommitHelper.validateCommit(baseCommit), "Expected basic commit to pass validation");
 	}

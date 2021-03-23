@@ -9,9 +9,6 @@
  ******************************************************************************/
 package org.eclipsefoundation.git.eca.helper;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import org.eclipsefoundation.git.eca.model.Commit;
 
 /**
@@ -21,7 +18,6 @@ import org.eclipsefoundation.git.eca.model.Commit;
  *
  */
 public class CommitHelper {
-	private static final Pattern SIGNED_OFF_BY_FOOTER = Pattern.compile("Signed-off-by:(.*)<(.*@.*)>");
 
 	/**
 	 * Validate the commits fields.
@@ -49,27 +45,6 @@ public class CommitHelper {
 		}
 
 		return valid;
-	}
-
-	/**
-	 * Retrieves the email address associated with a commit message. This is done by
-	 * processing the body and parsing out the given footer knowing its format.
-	 *
-	 * @param c the commit to retrieve the signed off by footer for
-	 * @return true if an email address matching the authors was found in the signed-off by footer lines
-	 */
-	public static boolean getSignedOffByEmail(Commit c) {
-		if (c == null) {
-			return false;
-		}
-		Matcher m = SIGNED_OFF_BY_FOOTER.matcher(c.getBody());
-		while (m.find()) {
-			String signOffEmail = m.group(2);
-			if (signOffEmail != null && signOffEmail.equalsIgnoreCase(c.getAuthor().getMail())) {
-				return true;
-			}
-		}
-		return false;
 	}
 
 	private CommitHelper() {

@@ -18,11 +18,15 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import javax.inject.Inject;
+
 import org.eclipsefoundation.git.eca.model.Commit;
 import org.eclipsefoundation.git.eca.model.GitUser;
 import org.eclipsefoundation.git.eca.model.ValidationRequest;
 import org.eclipsefoundation.git.eca.namespace.APIStatusCode;
 import org.eclipsefoundation.git.eca.namespace.ProviderType;
+import org.eclipsefoundation.git.eca.service.CachingService;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import io.quarkus.test.junit.QuarkusTest;
@@ -37,6 +41,15 @@ import io.restassured.http.ContentType;
 @QuarkusTest
 class ValidationResourceTest {
 
+    @Inject
+    CachingService cs;
+    
+    @BeforeAll
+    void cacheClear() {
+        // if dev servers are run on the same machine, some values may live in the cache
+        cs.removeAll();
+    }
+    
   @Test
   void validate() throws URISyntaxException {
     // set up test users
@@ -214,21 +227,15 @@ class ValidationResourceTest {
     vr.setCommits(commits);
 
     // test output w/ assertions
-    // Should be invalid as Wizard is not a committer on the prototype project
+    // Should be valid as wizard has signed ECA
     given()
         .body(vr)
         .contentType(ContentType.JSON)
         .when()
         .post("/eca")
         .then()
-        .statusCode(403)
-        .body(
-            "passed",
-            is(false),
-            "errorCount",
-            is(1),
-            "commits.123456789abcdefghijklmnop.errors[0].code",
-            is(APIStatusCode.ERROR_SIGN_OFF.getValue()));
+        .statusCode(200)
+        .body("passed", is(true), "errorCount", is(0));
   }
 
   @Test
@@ -255,21 +262,15 @@ class ValidationResourceTest {
     vr.setCommits(commits);
 
     // test output w/ assertions
-    // Should be invalid as a different email was associated with the footer
+    // Should be valid as signed off by footer is no longer checked
     given()
         .body(vr)
         .contentType(ContentType.JSON)
         .when()
         .post("/eca")
         .then()
-        .statusCode(403)
-        .body(
-            "passed",
-            is(false),
-            "errorCount",
-            is(1),
-            "commits.123456789abcdefghijklmnop.errors[0].code",
-            is(APIStatusCode.ERROR_SIGN_OFF.getValue()));
+        .statusCode(200)
+        .body("passed", is(true), "errorCount", is(0));
   }
 
   @Test
