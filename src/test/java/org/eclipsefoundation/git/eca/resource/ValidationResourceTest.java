@@ -26,7 +26,7 @@ import org.eclipsefoundation.git.eca.model.ValidationRequest;
 import org.eclipsefoundation.git.eca.namespace.APIStatusCode;
 import org.eclipsefoundation.git.eca.namespace.ProviderType;
 import org.eclipsefoundation.git.eca.service.CachingService;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.quarkus.test.junit.QuarkusTest;
@@ -44,7 +44,8 @@ class ValidationResourceTest {
     @Inject
     CachingService cs;
     
-    @BeforeAll
+    
+    @BeforeEach
     void cacheClear() {
         // if dev servers are run on the same machine, some values may live in the cache
         cs.removeAll();
