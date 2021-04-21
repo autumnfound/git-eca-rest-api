@@ -23,6 +23,7 @@ import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.eclipsefoundation.git.eca.api.AccountsAPI;
 import org.eclipsefoundation.git.eca.api.BotsAPI;
@@ -55,6 +56,10 @@ import org.slf4j.LoggerFactory;
 @Produces({MediaType.APPLICATION_JSON})
 public class ValidationResource {
   private static final Logger LOGGER = LoggerFactory.getLogger(ValidationResource.class);
+
+  @Inject
+  @ConfigProperty(name = "eclipse.mail.whitelist")
+  List<String> whitelistedUsers;
 
   // eclipse API rest client interfaces
   @Inject @RestClient AccountsAPI accounts;
@@ -180,7 +185,16 @@ public class ValidationResource {
     // retrieve the eclipse account for the committer
     EclipseUser eclipseCommitter = getIdentifiedUser(committer);
     if (eclipseCommitter == null) {
-      if (!userIsABot(committer.getMail(), provider)) {
+      // check if whitelisted or bot
+      if (isWhitelistedUser(committer.getMail())) {
+        addMessage(
+            response,
+            String.format(
+                "Automated user '%1$s' detected for committer of commit %2$s",
+                committer.getMail(), c.getHash()),
+            c.getHash());
+        eclipseCommitter = EclipseUser.createBotStub(committer);
+      } else if (!userIsABot(committer.getMail(), provider)) {
         addMessage(
             response,
             String.format(
@@ -317,6 +331,10 @@ public class ValidationResource {
                 return mail.equalsIgnoreCase(bot.getEmail());
               }
             });
+  }
+
+  private boolean isWhitelistedUser(String mail) {
+    return whitelistedUsers.indexOf(mail) != -1;
   }
 
   /**
