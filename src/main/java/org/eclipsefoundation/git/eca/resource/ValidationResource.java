@@ -58,8 +58,8 @@ public class ValidationResource {
   private static final Logger LOGGER = LoggerFactory.getLogger(ValidationResource.class);
 
   @Inject
-  @ConfigProperty(name = "eclipse.mail.whitelist")
-  List<String> whitelistedUsers;
+  @ConfigProperty(name = "eclipse.mail.allowlist")
+  List<String> allowListUsers;
 
   // eclipse API rest client interfaces
   @Inject @RestClient AccountsAPI accounts;
@@ -186,7 +186,7 @@ public class ValidationResource {
     EclipseUser eclipseCommitter = getIdentifiedUser(committer);
     if (eclipseCommitter == null) {
       // check if whitelisted or bot
-      if (isWhitelistedUser(committer.getMail())) {
+      if (isAllowedUser(committer.getMail())) {
         addMessage(
             response,
             String.format(
@@ -333,8 +333,8 @@ public class ValidationResource {
             });
   }
 
-  private boolean isWhitelistedUser(String mail) {
-    return whitelistedUsers.indexOf(mail) != -1;
+  private boolean isAllowedUser(String mail) {
+    return allowListUsers.indexOf(mail) != -1;
   }
 
   /**
