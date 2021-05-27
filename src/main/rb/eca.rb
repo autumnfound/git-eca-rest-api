@@ -69,6 +69,10 @@ end
 
 ## required for proper cherry-picking of new commits
 default_branch = project_json_data['default_branch']
+if (default_branch.nil? || default_branch.empty?) then
+  puts "Could not find default branch, assuming new project and bypassing ECA check."
+  exit 0
+end
 default_branch_head_ref = "refs/heads/#{default_branch}"
 
 ## Get all commits visible relative to default branch (anything new and not merged in)
