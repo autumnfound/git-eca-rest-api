@@ -3,6 +3,9 @@ kind: Deployment
 metadata:
   name: git-eca-rest-api
   namespace: foundation-internal-webdev-apps
+  labels:
+    app: git-eca-rest-api
+    environment: production
 spec:
   selector:
     matchLabels:

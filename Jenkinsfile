@@ -35,9 +35,18 @@
       buildDiscarder(logRotator(numToKeepStr: '10'))
     }
 
+    triggers { 
+      // build once a week to keep up with parents images updates
+      cron('H H * * H') 
+    }
+
     stages {
       stage('Build Java code') {
         steps {
+          readTrusted 'mvnw'
+          readTrusted '.mvn/wrapper/MavenWrapperDownloader.java'
+          readTrusted 'pom.xml'
+
           sh './mvnw -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn --batch-mode package'
           stash includes: 'target/', name: 'target'
         }
@@ -48,6 +57,8 @@
           label 'docker-build'
         }
         steps {
+          readTrusted 'src/main/docker/Dockerfile.jvm'
+
           unstash 'target'
 
           sh 'docker build -f src/main/docker/Dockerfile.jvm --no-cache -t ${IMAGE_NAME}:${TAG_NAME} -t ${IMAGE_NAME}:latest .'
@@ -84,10 +95,26 @@
             spec:
               containers:
               - name: kubectl
-                image: eclipsefdn/kubectl:1.9-alpine
+                image: eclipsefdn/kubectl:okd-c1
                 command:
                 - cat
                 tty: true
+                resources:
+                  limits:
+                    cpu: 1
+                    memory: 1Gi
+                volumeMounts:
+                - mountPath: "/home/default/.kube"
+                  name: "dot-kube"
+                  readOnly: false
+              - name: jnlp
+                resources:
+                  limits:
+                    cpu: 1
+                    memory: 1Gi
+              volumes:
+              - name: "dot-kube"
+                emptyDir: {}
             '''
           }
         }
@@ -100,23 +127,12 @@
         }
         steps {
           container('kubectl') {
-            withKubeConfig([credentialsId: '1d8095ea-7e9d-4e94-b799-6dadddfdd18a', serverUrl: 'https://console-int.c1-ci.eclipse.org']) {
-              sh '''
-                DEPLOYMENT="$(k8s getFirst deployment "${NAMESPACE}" "app=${APP_NAME},environment=${ENVIRONMENT}")"
-                if [[ $(echo "${DEPLOYMENT}" | jq -r 'length') -eq 0 ]]; then
-                  echo "ERROR: Unable to find a deployment to patch matching 'app=${APP_NAME},environment=${ENVIRONMENT}' in namespace ${NAMESPACE}"
-                  exit 1
-                else 
-                  DEPLOYMENT_NAME="$(echo "${DEPLOYMENT}" | jq -r '.metadata.name')"
-                  kubectl set image "deployment.v1.apps/${DEPLOYMENT_NAME}" -n "${NAMESPACE}" "${CONTAINER_NAME}=${IMAGE_NAME}:${TAG_NAME}" --record=true
-                  if ! kubectl rollout status "deployment.v1.apps/${DEPLOYMENT_NAME}" -n "${NAMESPACE}"; then
-                    # will fail if rollout does not succeed in less than .spec.progressDeadlineSeconds
-                    kubectl rollout undo "deployment.v1.apps/${DEPLOYMENT_NAME}" -n "${NAMESPACE}"
-                    exit 1
-                  fi
-                fi
-              '''
-            }
+            updateContainerImage([
+              namespace: "${env.NAMESPACE}",
+              selector: "app=${env.APP_NAME},environment=${env.ENVIRONMENT}",
+              containerName: "${env.CONTAINER_NAME}",
+              newImageRef: "${env.IMAGE_NAME}:${env.TAG_NAME}"
+            ])
           }
         }
       }
