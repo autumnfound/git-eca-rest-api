@@ -12,8 +12,10 @@ import java.net.MalformedURLException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.POST;
@@ -60,6 +62,9 @@ public class ValidationResource {
   @Inject
   @ConfigProperty(name = "eclipse.mail.allowlist")
   List<String> allowListUsers;
+  @Inject
+  @ConfigProperty(name = "eclipse.noreply.email-patterns")
+  List<String> emailPatterns;
 
   // eclipse API rest client interfaces
   @Inject @RestClient AccountsAPI accounts;
@@ -69,6 +74,15 @@ public class ValidationResource {
   @Inject OAuthService oauth;
   @Inject CachingService cache;
   @Inject ProjectsService projects;
+
+  // rendered list of regex values
+  List<Pattern> patterns;
+
+  @PostConstruct
+  void init() {
+    // compile the patterns once per object to save processing time
+    this.patterns = emailPatterns.stream().map(Pattern::compile).collect(Collectors.toList());
+  }
 
   /**
    * Consuming a JSON request, this method will validate all passed commits, using the repo URL and
@@ -392,23 +406,73 @@ public class ValidationResource {
     // get the Eclipse account for the user
     try {
       // use cache to avoid asking for the same user repeatedly on repeated requests
-      @SuppressWarnings("unchecked")
-      Optional<List<EclipseUser>> users =
-          cache.get(
-              "user|" + user.getMail(),
-              () -> accounts.getUsers("Bearer " + oauth.getToken(), null, null, user.getMail()),
-              (Class<List<EclipseUser>>) (Object) List.class);
-      if (!users.isPresent() || users.get().isEmpty()) {
-        LOGGER.error("No users found for mail '{}'", user.getMail());
+      Optional<EclipseUser> foundUser =
+          cache.get("user|" + user.getMail(), () -> retrieveUser(user), EclipseUser.class);
+      if (!foundUser.isPresent()) {
+        LOGGER.warn("No users found for mail '{}'", user.getMail());
         return null;
       }
-      return users.get().get(0);
+      return foundUser.get();
     } catch (WebApplicationException e) {
       Response r = e.getResponse();
       if (r != null && r.getStatus() == 404) {
         LOGGER.error("No users found for mail '{}'", user.getMail());
       } else {
         LOGGER.error("Error while checking for user", e);
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Checks for standard and noreply email address matches for a Git user and converts to a
+   * Eclipse Foundation account object.
+   * 
+   * @param user the user to attempt account retrieval for.
+   * @return the user account if found by mail, or null if none found.
+   */
+  private EclipseUser retrieveUser(GitUser user) {
+    // standard user check (returns best match)
+    LOGGER.debug("Checking user with mail {}", user.getMail());
+    try {
+      List<EclipseUser> users = accounts.getUsers("Bearer " + oauth.getToken(), null, null, user.getMail());
+      if (users != null) {
+        return users.get(0);
+      }
+    } catch(WebApplicationException e) {
+      LOGGER.warn("Could not find user account with mail '{}'", user.getMail());
+    }
+    // return results for no-reply
+    return checkForNoReplyUser(user);
+  }
+
+  /**
+   * Checks git user for no-reply address, and attempts to ratify user through reverse lookup in API service.
+   * Currently, this service only recognizes Github no-reply addresses as they have a route to be mapped.
+   * 
+   * @param user the Git user account to check for no-reply mail address
+   * @return the Eclipse user if email address is detected no reply and one can be mapped, otherwise null
+   */
+  private EclipseUser checkForNoReplyUser(GitUser user) {
+    LOGGER.debug("Checking user with mail {} for no-reply", user.getMail());
+    boolean isNoReply = patterns.stream().anyMatch(pattern -> pattern.matcher(user.getMail().trim()).find());
+    if (isNoReply) {
+      String[] nameParts = user.getMail().split("[\\+@]");
+      // check if the userName part is not null/empty in the email address
+      if (nameParts[0] != null && nameParts[0].trim().length() > 0) {
+        // grab the portion before the first + symbol, which tends to indicate a user account
+        String uname = nameParts[0].trim();
+        LOGGER.debug("User with mail {} detected as noreply account, checking services for username match on '{}'", 
+          user.getMail(), uname);
+        // check github for no-reply (only allowed noreply currently)
+        if (user.getMail().contains("noreply.github.com")) {
+          try {
+            // check for Github no reply + return as its the last shot
+            return accounts.getUserByGithubUname("Bearer " + oauth.getToken(), uname);
+          } catch(WebApplicationException e) {
+            LOGGER.warn("No match for '{}' in Github", uname);
+          }
+        }
       }
     }
     return null;
