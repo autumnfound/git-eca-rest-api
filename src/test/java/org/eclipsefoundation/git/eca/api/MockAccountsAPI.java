@@ -11,6 +11,7 @@ package org.eclipsefoundation.git.eca.api;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import javax.annotation.PostConstruct;
@@ -98,6 +99,12 @@ public class MockAccountsAPI implements AccountsAPI {
 			}
 			return matches;
 		}).collect(Collectors.toList());
+	}
+
+	@Override
+	public EclipseUser getUserByGithubUname(String authBearer, String uname) {
+		// assume GH username == Eclipse uname for simplicity of test
+		return src.stream().filter(user -> uname.equalsIgnoreCase(user.getName())).findFirst().orElse(null);
 	}
 
 }

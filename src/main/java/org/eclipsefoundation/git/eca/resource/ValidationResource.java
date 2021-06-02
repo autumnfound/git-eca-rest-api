@@ -432,6 +432,11 @@ public class ValidationResource {
    * @return the user account if found by mail, or null if none found.
    */
   private EclipseUser retrieveUser(GitUser user) {
+    // check for noreply (no reply will never have user account, and fails fast)
+    EclipseUser eclipseUser = checkForNoReplyUser(user);
+    if (eclipseUser != null) {
+      return eclipseUser;
+    }
     // standard user check (returns best match)
     LOGGER.debug("Checking user with mail {}", user.getMail());
     try {
@@ -442,8 +447,7 @@ public class ValidationResource {
     } catch(WebApplicationException e) {
       LOGGER.warn("Could not find user account with mail '{}'", user.getMail());
     }
-    // return results for no-reply
-    return checkForNoReplyUser(user);
+    return null;
   }
 
   /**
@@ -464,8 +468,9 @@ public class ValidationResource {
         String uname = nameParts[0].trim();
         LOGGER.debug("User with mail {} detected as noreply account, checking services for username match on '{}'", 
           user.getMail(), uname);
+
         // check github for no-reply (only allowed noreply currently)
-        if (user.getMail().contains("noreply.github.com")) {
+        if (user.getMail().endsWith("noreply.github.com")) {
           try {
             // check for Github no reply + return as its the last shot
             return accounts.getUserByGithubUname("Bearer " + oauth.getToken(), uname);
