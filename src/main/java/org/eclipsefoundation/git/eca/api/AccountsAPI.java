@@ -14,6 +14,7 @@ import java.util.List;
 import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 
@@ -29,7 +30,6 @@ import org.eclipsefoundation.git.eca.model.EclipseUser;
  * @author Martin Lowe
  *
  */
-@Path("/account")
 @RegisterRestClient
 public interface AccountsAPI {
 
@@ -42,8 +42,22 @@ public interface AccountsAPI {
 	 * @return all matching eclipse accounts
 	 */
 	@GET
-	@Path("/profile")
+	@Path("/account/profile")
 	@Produces("application/json")
 	List<EclipseUser> getUsers(@HeaderParam("Authorization") String authBearer, @QueryParam("uid") String id,
 			@QueryParam("name") String name, @QueryParam("mail") String mail);
+
+	/**
+	 * Retrieves user objects that matches the given Github username.
+	 * 
+	 * @param authBearer authorization header value for validating call
+	 * @param uname      username of the Github account to retrieve Eclipse Account
+	 *                   for
+	 * @return the matching Eclipse account or null
+	 */
+	@GET
+	@Path("/github/profile/{uname}")
+	@Produces("application/json")
+	EclipseUser getUserByGithubUname(@HeaderParam("Authorization") String authBearer, @PathParam("uname") String uname);
+
 }
