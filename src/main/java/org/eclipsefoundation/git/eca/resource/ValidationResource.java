@@ -30,7 +30,6 @@ import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.eclipsefoundation.git.eca.api.AccountsAPI;
 import org.eclipsefoundation.git.eca.api.BotsAPI;
 import org.eclipsefoundation.git.eca.helper.CommitHelper;
-import org.eclipsefoundation.git.eca.model.BotUser;
 import org.eclipsefoundation.git.eca.model.Commit;
 import org.eclipsefoundation.git.eca.model.EclipseUser;
 import org.eclipsefoundation.git.eca.model.GitUser;
@@ -172,7 +171,7 @@ public class ValidationResource {
     EclipseUser eclipseAuthor = getIdentifiedUser(author);
     if (eclipseAuthor == null) {
       // if the user is a bot, generate a stubbed user
-      if (!userIsABot(author.getMail(), provider)) {
+      if (!userIsABot(author.getMail(), filteredProjects)) {
         addMessage(
             response,
             String.format(
@@ -310,7 +309,7 @@ public class ValidationResource {
       }
     }
     // check if user is a bot, either through early detection or through on-demand check
-    if (user.isBot() || userIsABot(user.getMail(), provider)) {
+    if (user.isBot() || userIsABot(user.getMail(), filteredProjects)) {
       LOGGER.debug("User '{} <{}>' was found to be a bot", user.getName(), user.getMail());
       return true;
     }
@@ -452,13 +451,13 @@ public class ValidationResource {
   }
 
   @SuppressWarnings("unchecked")
-  private List<BotUser> getBots() {
-    Optional<List<BotUser>> allBots =
-        cache.get("allBots", () -> bots.getBots(), (Class<List<BotUser>>) (Object) List.class);
-    if (!allBots.isPresent()) {
-      return Collections.emptyList();
-    }
-    return allBots.get();
+  private List<JsonNode> getBots() {
+      Optional<List<JsonNode>> allBots = cache.get("allBots", () -> bots.getBots(),
+              (Class<List<JsonNode>>) (Object) List.class);
+      if (!allBots.isPresent()) {
+          return Collections.emptyList();
+      }
+      return allBots.get();
   }
 
   private void addMessage(ValidationResponse r, String message, String hash) {
