@@ -185,7 +185,15 @@ public class ValidationResource {
     EclipseUser eclipseAuthor = getIdentifiedUser(author);
     if (eclipseAuthor == null) {
       // if the user is a bot, generate a stubbed user
-      if (!userIsABot(author.getMail(), filteredProjects)) {
+      if (isAllowedUser(author.getMail())) {
+        addMessage(
+            response,
+            String.format(
+                "Automated user '%1$s' detected for author of commit %2$s",
+                author.getMail(), c.getHash()),
+            c.getHash());
+        eclipseAuthor = EclipseUser.createBotStub(author);
+      } else if (!userIsABot(author.getMail(), filteredProjects)) {
         addMessage(
             response,
             String.format(
