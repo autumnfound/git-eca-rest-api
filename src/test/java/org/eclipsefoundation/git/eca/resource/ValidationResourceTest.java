@@ -1064,4 +1064,62 @@ class ValidationResourceTest {
     // Should be invalid as no user exists with "Github" handle that matches some_guy
     given().body(vr).contentType(ContentType.JSON).when().post("/eca").then().statusCode(403);
   }
+
+  @Test
+  void validateAllowListAuthor_success() throws URISyntaxException {
+    GitUser g1 = new GitUser();
+    g1.setName("grunter");
+    g1.setMail("grunter+123456789@users.noreply.github.com");
+    GitUser g2 = new GitUser();
+    g2.setName("grunter");
+    g2.setMail("noreply@github.com");
+
+    List<Commit> commits = new ArrayList<>();
+    // create sample commits
+    Commit c1 = new Commit();
+    c1.setAuthor(g2);
+    c1.setCommitter(g1);
+    c1.setHash("123456789abcdefghijklmnop");
+    c1.setSubject("All of the things");
+    c1.setParents(Arrays.asList("46bb69bf6aa4ed26b2bf8c322ae05bef0bcc5c10"));
+    commits.add(c1);
+
+    ValidationRequest vr = new ValidationRequest();
+    vr.setProvider(ProviderType.GERRIT);
+    vr.setRepoUrl(new URI("/gitroot/sample/gerrit.other-project"));
+    vr.setCommits(commits);
+    vr.setStrictMode(true);
+    // test output w/ assertions
+    // Should be valid as grunter used a no-reply Github account and has a matching GH handle
+    given().body(vr).contentType(ContentType.JSON).when().post("/eca").then().statusCode(200);
+  }
+
+  @Test
+  void validateAllowListCommitter_success() throws URISyntaxException {
+    GitUser g1 = new GitUser();
+    g1.setName("grunter");
+    g1.setMail("grunter+123456789@users.noreply.github.com");
+    GitUser g2 = new GitUser();
+    g2.setName("grunter");
+    g2.setMail("noreply@github.com");
+
+    List<Commit> commits = new ArrayList<>();
+    // create sample commits
+    Commit c1 = new Commit();
+    c1.setAuthor(g1);
+    c1.setCommitter(g2);
+    c1.setHash("123456789abcdefghijklmnop");
+    c1.setSubject("All of the things");
+    c1.setParents(Arrays.asList("46bb69bf6aa4ed26b2bf8c322ae05bef0bcc5c10"));
+    commits.add(c1);
+
+    ValidationRequest vr = new ValidationRequest();
+    vr.setProvider(ProviderType.GERRIT);
+    vr.setRepoUrl(new URI("/gitroot/sample/gerrit.other-project"));
+    vr.setCommits(commits);
+    vr.setStrictMode(true);
+    // test output w/ assertions
+    // Should be valid as grunter used a no-reply Github account and has a matching GH handle
+    given().body(vr).contentType(ContentType.JSON).when().post("/eca").then().statusCode(200);
+  }
 }
