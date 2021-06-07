@@ -10,7 +10,9 @@ package org.eclipsefoundation.git.eca.resource;
 
 import java.net.MalformedURLException;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -30,7 +32,6 @@ import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.eclipsefoundation.git.eca.api.AccountsAPI;
 import org.eclipsefoundation.git.eca.api.BotsAPI;
 import org.eclipsefoundation.git.eca.helper.CommitHelper;
-import org.eclipsefoundation.git.eca.model.BotUser;
 import org.eclipsefoundation.git.eca.model.Commit;
 import org.eclipsefoundation.git.eca.model.EclipseUser;
 import org.eclipsefoundation.git.eca.model.GitUser;
@@ -44,6 +45,8 @@ import org.eclipsefoundation.git.eca.service.OAuthService;
 import org.eclipsefoundation.git.eca.service.ProjectsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.databind.JsonNode;
 
 /**
  * ECA validation endpoint for Git commits. Will use information from the bots, projects, and
@@ -182,7 +185,7 @@ public class ValidationResource {
     EclipseUser eclipseAuthor = getIdentifiedUser(author);
     if (eclipseAuthor == null) {
       // if the user is a bot, generate a stubbed user
-      if (!userIsABot(author.getMail(), provider)) {
+      if (!userIsABot(author.getMail(), filteredProjects)) {
         addMessage(
             response,
             String.format(
@@ -208,7 +211,7 @@ public class ValidationResource {
                 committer.getMail(), c.getHash()),
             c.getHash());
         eclipseCommitter = EclipseUser.createBotStub(committer);
-      } else if (!userIsABot(committer.getMail(), provider)) {
+      } else if (!userIsABot(committer.getMail(), filteredProjects)) {
         addMessage(
             response,
             String.format(
@@ -320,33 +323,66 @@ public class ValidationResource {
       }
     }
     // check if user is a bot, either through early detection or through on-demand check
-    if (user.isBot() || userIsABot(user.getMail(), provider)) {
+    if (user.isBot() || userIsABot(user.getMail(), filteredProjects)) {
       LOGGER.debug("User '{} <{}>' was found to be a bot", user.getName(), user.getMail());
       return true;
     }
     return false;
   }
 
-  private boolean userIsABot(String mail, ProviderType provider) {
-    if (mail == null || "".equals(mail.trim())) {
-      return false;
+    private boolean userIsABot(String mail, List<Project> filteredProjects) {
+        if (mail == null || "".equals(mail.trim())) {
+            return false;
+        }
+        List<JsonNode> botObjs = getBots();
+        // if there are no matching projects, then check against all bots, not just project bots
+        if (filteredProjects == null || filteredProjects.isEmpty()) {
+            return botObjs.stream().anyMatch(bot -> checkFieldsForMatchingMail(bot, mail));
+        }
+        // for each of the matched projects, check the bot for the matching project ID
+        for (Project p : filteredProjects) {
+            LOGGER.debug("Checking project {} for matching bots", p.getProjectId());
+            for (JsonNode bot : botObjs) {
+                // if the project ID match, and one of the email fields matches, then user is bot
+                if (p.getProjectId().equalsIgnoreCase(bot.get("projectId").asText())
+                        && checkFieldsForMatchingMail(bot, mail)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
-    return getBots()
-        .stream()
-        .anyMatch(
-            bot -> {
-              if (ProviderType.GITHUB.equals(provider)) {
-                return bot.getGithubBot() != null
-                    && mail.equalsIgnoreCase(bot.getGithubBot().getEmail());
-              } else if (ProviderType.GITLAB.equals(provider)) {
-                return bot.getGitlabBot() != null
-                    && mail.equalsIgnoreCase(bot.getGitlabBot().getEmail());
-              } else {
-                return mail.equalsIgnoreCase(bot.getEmail());
-              }
-            });
-  }
 
+    /**
+     * Checks JSON node to look for email fields, both at the root, and nested email fields.
+     * 
+     * @param bot the bots JSON object representation
+     * @param mail the email to match against
+     * @return true if the bot has a matching email value, otherwise false
+     */
+    private boolean checkFieldsForMatchingMail(JsonNode bot, String mail) {
+        // check the root email for the bot for match
+        JsonNode botmail = bot.get("email");
+        if (mail != null && botmail != null && mail.equalsIgnoreCase(botmail.asText(""))) {
+            return true;
+        }
+        Iterator<Entry<String, JsonNode>> i = bot.fields();
+        while (i.hasNext()) {
+            Entry<String, JsonNode> e = i.next();
+            // check that our field is an object with fields
+            JsonNode node = e.getValue();
+            if (node.isObject()) {
+                LOGGER.debug("Checking {} for bot email", e.getKey());
+                // if the mail matches (ignoring case) user is bot
+                JsonNode botAliasMail = node.get("email");
+                if (mail != null && botAliasMail != null && mail.equalsIgnoreCase(botAliasMail.asText(""))) {
+                    LOGGER.debug("Found match for bot email {}", mail);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
   private boolean isAllowedUser(String mail) {
     return allowListUsers.indexOf(mail) != -1;
   }
@@ -484,13 +520,13 @@ public class ValidationResource {
   }
 
   @SuppressWarnings("unchecked")
-  private List<BotUser> getBots() {
-    Optional<List<BotUser>> allBots =
-        cache.get("allBots", () -> bots.getBots(), (Class<List<BotUser>>) (Object) List.class);
-    if (!allBots.isPresent()) {
-      return Collections.emptyList();
-    }
-    return allBots.get();
+  private List<JsonNode> getBots() {
+      Optional<List<JsonNode>> allBots = cache.get("allBots", () -> bots.getBots(),
+              (Class<List<JsonNode>>) (Object) List.class);
+      if (!allBots.isPresent()) {
+          return Collections.emptyList();
+      }
+      return allBots.get();
   }
 
   private void addMessage(ValidationResponse r, String message, String hash) {
