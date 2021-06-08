@@ -397,6 +397,10 @@ public class ValidationResource {
    */
   private List<Project> retrieveProjectsForRequest(ValidationRequest req) {
     String repoUrl = req.getRepoUrl().getPath();
+    if (repoUrl == null) {
+      LOGGER.warn("Can not match null repo URL to projects");
+      return Collections.emptyList();
+    }
     // check for all projects that make use of the given repo
     List<Project> availableProjects = projects.getProjects();
     if (availableProjects == null || availableProjects.isEmpty()) {
@@ -410,17 +414,17 @@ public class ValidationResource {
     if (ProviderType.GITLAB.equals(req.getProvider())) {
       return availableProjects
           .stream()
-          .filter(p -> p.getGitlabRepos().stream().anyMatch(re -> re.getUrl().endsWith(repoUrl)))
+          .filter(p -> p.getGitlabRepos().stream().anyMatch(re -> re.getUrl() != null && re.getUrl().endsWith(repoUrl)))
           .collect(Collectors.toList());
     } else if (ProviderType.GITHUB.equals(req.getProvider())) {
       return availableProjects
           .stream()
-          .filter(p -> p.getGithubRepos().stream().anyMatch(re -> re.getUrl().endsWith(repoUrl)))
+          .filter(p -> p.getGithubRepos().stream().anyMatch(re -> re.getUrl() != null && re.getUrl().endsWith(repoUrl)))
           .collect(Collectors.toList());
     } else if (ProviderType.GERRIT.equals(req.getProvider())) {
       return availableProjects
           .stream()
-          .filter(p -> p.getGerritRepos().stream().anyMatch(re -> re.getUrl().endsWith(repoUrl)))
+          .filter(p -> p.getGerritRepos().stream().anyMatch(re -> re.getUrl() != null && re.getUrl().endsWith(repoUrl)))
           .collect(Collectors.toList());
     } else {
       return availableProjects
