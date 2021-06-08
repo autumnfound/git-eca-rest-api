@@ -6,7 +6,7 @@ If you want to learn more about Quarkus, please visit its website: https://quark
 
 <!-- TOC -->
 - [What is a valid commit?](#what-is-a-valid-commit)
-- [Submitting applications for new bots](#submitting-applications-for-new-bots)
+- [Submitting applications for existing bots](#submitting-applications-for-existing-bots)
 - [Running the application in dev mode](#running-the-application-in-dev-mode)
 - [Packaging and running the application](#packaging-and-running-the-application)
 - [Enabling commit hook in GitLab](#enabling-commit-hook-in-gitlab)
@@ -31,9 +31,9 @@ example) Signed-off-by: Martin Lowe <martin.lowe@eclipse-foundation.org>
 
 While these rules apply to all project repositories, any non-project repositories will also be checked. The messages indicate the failures as warnings to the consuming service (like Gitlab or Gerrit) unless 'strict mode' is enabled for the service. Whether or not a repository is tracked (or if it is a project repository) is determined by its presence as a repository directly linked to an active project within the [PMI](https://projects.eclipse.org/), as reported by the [Projects API](https://api.eclipse.org/#tag/Projects). 
 
-## Submitting applications for new bots
+## Submitting applications for existing bots
 
-Does your project require a bot to mroe effectively run, or additional bots for new functionality? To submit requests for new bots to be registered within our API, please see the [Project Bots API repository](https://github.com/EclipseFdn/projects-bots-api) and create an issue. We will require the projects name, your Eclipse Foundation username (for verification of authority), the name of the bot, the email address used to register the account for the bot, and a quick description of what the bot will do so that we can properly document it internally.
+To submit requests for existing bots to be registered within our API (such as dependabot), please see the [Project Bots API repository](https://github.com/EclipseFdn/projects-bots-api) and create an issue.
 
 ## Running the application in dev mode
 
