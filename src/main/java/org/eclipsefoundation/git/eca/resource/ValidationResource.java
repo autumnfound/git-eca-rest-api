@@ -183,54 +183,46 @@ public class ValidationResource {
 
     // retrieve the eclipse account for the author
     EclipseUser eclipseAuthor = getIdentifiedUser(author);
-    if (eclipseAuthor == null) {
-      // if the user is a bot, generate a stubbed user
-      if (isAllowedUser(author.getMail())) {
-        addMessage(
-            response,
-            String.format(
-                "Automated user '%1$s' detected for author of commit %2$s",
-                author.getMail(), c.getHash()),
-            c.getHash());
-        eclipseAuthor = EclipseUser.createBotStub(author);
-      } else if (!userIsABot(author.getMail(), filteredProjects)) {
-        addMessage(
-            response,
-            String.format(
-                "Could not find an Eclipse user with mail '%1$s' for author of commit %2$s",
-                committer.getMail(), c.getHash()),
-            c.getHash());
-        addError(response, "Author must have an Eclipse Account", c.getHash());
-        return true;
-      }
-      // set the Eclipse author as the basic committer w\ bot flag to pass information forward
+    // if the user is a bot, generate a stubbed user
+    if (isAllowedUser(author.getMail()) || userIsABot(author.getMail(), filteredProjects)) {
+      addMessage(
+          response,
+          String.format(
+              "Automated user '%1$s' detected for author of commit %2$s",
+              author.getMail(), c.getHash()),
+          c.getHash());
       eclipseAuthor = EclipseUser.createBotStub(author);
+    } else if (eclipseAuthor == null) {
+      addMessage(
+          response,
+          String.format(
+              "Could not find an Eclipse user with mail '%1$s' for author of commit %2$s",
+              author.getMail(), c.getHash()),
+          c.getHash());
+      addError(response, "Author must have an Eclipse Account", c.getHash());
+      return true;
     }
 
     // retrieve the eclipse account for the committer
     EclipseUser eclipseCommitter = getIdentifiedUser(committer);
-    if (eclipseCommitter == null) {
-      // check if whitelisted or bot
-      if (isAllowedUser(committer.getMail())) {
-        addMessage(
-            response,
-            String.format(
-                "Automated user '%1$s' detected for committer of commit %2$s",
-                committer.getMail(), c.getHash()),
-            c.getHash());
-        eclipseCommitter = EclipseUser.createBotStub(committer);
-      } else if (!userIsABot(committer.getMail(), filteredProjects)) {
-        addMessage(
-            response,
-            String.format(
-                "Could not find an Eclipse user with mail '%1$s' for committer of commit %2$s",
-                committer.getMail(), c.getHash()),
-            c.getHash());
-        addError(response, "Committing user must have an Eclipse Account", c.getHash());
-        return true;
-      }
-      // set the Eclipse committer as the basic committer w\ bot flag to pass information forward
+    // check if whitelisted or bot
+    if (isAllowedUser(committer.getMail()) || userIsABot(committer.getMail(), filteredProjects)) {
+      addMessage(
+          response,
+          String.format(
+              "Automated user '%1$s' detected for committer of commit %2$s",
+              committer.getMail(), c.getHash()),
+          c.getHash());
       eclipseCommitter = EclipseUser.createBotStub(committer);
+    } else if (eclipseCommitter == null) {
+      addMessage(
+          response,
+          String.format(
+              "Could not find an Eclipse user with mail '%1$s' for committer of commit %2$s",
+              committer.getMail(), c.getHash()),
+          c.getHash());
+      addError(response, "Committing user must have an Eclipse Account", c.getHash());
+      return true;
     }
     // validate author access to the current repo
     validateAuthorAccess(response, c, eclipseAuthor, filteredProjects, provider);
@@ -372,6 +364,7 @@ public class ValidationResource {
         // check the root email for the bot for match
         JsonNode botmail = bot.get("email");
         if (mail != null && botmail != null && mail.equalsIgnoreCase(botmail.asText(""))) {
+            LOGGER.debug("Found matching bot at root level for '{}'",mail);
             return true;
         }
         Iterator<Entry<String, JsonNode>> i = bot.fields();
