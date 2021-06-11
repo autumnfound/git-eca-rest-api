@@ -27,6 +27,7 @@ import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import org.apache.commons.codec.binary.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.eclipsefoundation.git.eca.api.AccountsAPI;
@@ -502,22 +503,31 @@ public class ValidationResource {
     LOGGER.debug("Checking user with mail {} for no-reply", user.getMail());
     boolean isNoReply = patterns.stream().anyMatch(pattern -> pattern.matcher(user.getMail().trim()).find());
     if (isNoReply) {
-      String[] nameParts = user.getMail().split("[\\+@]");
-      // check if the userName part is not null/empty in the email address
-      if (nameParts[0] != null && nameParts[0].trim().length() > 0) {
-        // grab the portion before the first + symbol, which tends to indicate a user account
-        String uname = nameParts[0].trim();
-        LOGGER.debug("User with mail {} detected as noreply account, checking services for username match on '{}'", 
-          user.getMail(), uname);
+      // get the username/ID string before the first @ symbol. 
+      String noReplyUser = user.getMail().substring(0, user.getMail().indexOf("@", 0));
+      // for each username part broken up by a +, check the second string (contains user)
+      String[] nameParts = noReplyUser.split("[\\+]");
+      String namePart;
+      if (nameParts.length > 1 && nameParts[1] != null) {
+        namePart = nameParts[1];
+      } else {
+        namePart = nameParts[0];
+      }
+      // grab the portion before the first + symbol, which tends to indicate a user account
+      String uname = namePart.trim();
+      LOGGER.debug("User with mail {} detected as noreply account, checking services for username match on '{}'", 
+        user.getMail(), uname);
 
-        // check github for no-reply (only allowed noreply currently)
-        if (user.getMail().endsWith("noreply.github.com")) {
-          try {
-            // check for Github no reply + return as its the last shot
-            return accounts.getUserByGithubUname("Bearer " + oauth.getToken(), uname);
-          } catch(WebApplicationException e) {
-            LOGGER.warn("No match for '{}' in Github", uname);
+      // check github for no-reply (only allowed noreply currently)
+      if (user.getMail().endsWith("noreply.github.com")) {
+        try {
+          // check for Github no reply, return if set
+          EclipseUser eclipseUser = accounts.getUserByGithubUname("Bearer " + oauth.getToken(), uname);
+          if (eclipseUser != null) {
+            return eclipseUser;
           }
+        } catch(WebApplicationException e) {
+          LOGGER.warn("No match for '{}' in Github", uname);
         }
       }
     }
