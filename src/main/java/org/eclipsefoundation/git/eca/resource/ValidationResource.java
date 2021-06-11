@@ -27,7 +27,6 @@ import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import org.apache.commons.codec.binary.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.eclipsefoundation.git.eca.api.AccountsAPI;
@@ -505,7 +504,7 @@ public class ValidationResource {
     if (isNoReply) {
       // get the username/ID string before the first @ symbol. 
       String noReplyUser = user.getMail().substring(0, user.getMail().indexOf("@", 0));
-      // for each username part broken up by a +, check the second string (contains user)
+      // split based on +, if more than one part, use second (contains user), otherwise, use whole string
       String[] nameParts = noReplyUser.split("[\\+]");
       String namePart;
       if (nameParts.length > 1 && nameParts[1] != null) {
@@ -513,7 +512,6 @@ public class ValidationResource {
       } else {
         namePart = nameParts[0];
       }
-      // grab the portion before the first + symbol, which tends to indicate a user account
       String uname = namePart.trim();
       LOGGER.debug("User with mail {} detected as noreply account, checking services for username match on '{}'", 
         user.getMail(), uname);
