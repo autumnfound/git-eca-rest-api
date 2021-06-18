@@ -273,23 +273,27 @@ public class ValidationResource {
    */
   private void validateUserAccessPartial(ValidationResponse r, Commit c, EclipseUser eclipseUser, 
         boolean isCommitter, APIStatusCode errorCode) {
+    String userType = "author";
+    if (APIStatusCode.ERROR_COMMITTER.equals(errorCode)) {
+      userType = "committer";
+    }
     if (isCommitter) {
-      addMessage(r, String.format("Eclipse user '%s' is a committer on the project.", eclipseUser.getName()), c.getHash());
+      addMessage(r, String.format("Eclipse user '%s'(%s) is a committer on the project.", eclipseUser.getName(), userType), c.getHash());
     } else {
-      addMessage(r, String.format("Eclipse user '%s' is not a committer on the project.", eclipseUser.getName()), c.getHash());
+      addMessage(r, String.format("Eclipse user '%s'(%s) is not a committer on the project.", eclipseUser.getName(), userType), c.getHash());
       // check if the author is signed off if not a committer
       if (eclipseUser.getEca().isSigned()) {
         addMessage(
             r,
-            String.format("Eclipse user '%s' has a current Eclipse Contributor Agreement (ECA) on file.", eclipseUser.getName()),
+            String.format("Eclipse user '%s'(%s) has a current Eclipse Contributor Agreement (ECA) on file.", eclipseUser.getName(), userType),
             c.getHash());
       } else {
         addMessage(
             r,
-            String.format("Eclipse user '%s' does not have a current Eclipse Contributor Agreement (ECA) on file.\n"
-                + "If there are multiple commits, please ensure that each author has a ECA.", eclipseUser.getName()),
+            String.format("Eclipse user '%s'(%s) does not have a current Eclipse Contributor Agreement (ECA) on file.\n"
+                + "If there are multiple commits, please ensure that each author has a ECA.", eclipseUser.getName(), userType),
             c.getHash());
-        addError(r, String.format("An Eclipse Contributor Agreement is required for Eclipse user '%s'.", eclipseUser.getName()),
+        addError(r, String.format("An Eclipse Contributor Agreement is required for Eclipse user '%s'(%s).", eclipseUser.getName(), userType),
             c.getHash(), errorCode);
       }
     }
