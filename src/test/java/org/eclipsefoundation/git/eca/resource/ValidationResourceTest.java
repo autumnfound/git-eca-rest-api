@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Test;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
+import io.restassured.response.ValidatableResponse;
 
 /**
  * Tests for verifying end to end validation via the endpoint. Uses restassured to create pseudo
@@ -441,6 +442,7 @@ class ValidationResourceTest {
 
     // test output w/ assertions
     // Should be invalid as Grunt does not have spec project write access
+    // Should have 2 errors, as both users get validated
     given()
         .body(vr)
         .contentType(ContentType.JSON)
@@ -452,7 +454,7 @@ class ValidationResourceTest {
             "passed",
             is(false),
             "errorCount",
-            is(1),
+            is(2),
             "commits.123456789abcdefghijklmnop.errors[0].code",
             is(APIStatusCode.ERROR_SPEC_PROJECT.getValue()));
   }
@@ -526,17 +528,21 @@ class ValidationResourceTest {
   }
 
   @Test
-  void validateNoECA() throws URISyntaxException {
+  void validateNoECA_author() throws URISyntaxException {
     // set up test users
     GitUser g1 = new GitUser();
     g1.setName("Newbie Anon");
     g1.setMail("newbie@important.co");
 
+    GitUser g2 = new GitUser();
+    g2.setName("The Wizard");
+    g2.setMail("code.wiz@important.co");
+
     List<Commit> commits = new ArrayList<>();
     // create sample commits
     Commit c1 = new Commit();
     c1.setAuthor(g1);
-    c1.setCommitter(g1);
+    c1.setCommitter(g2);
     c1.setBody(String.format("Signed-off-by: %s <%s>", g1.getName(), g1.getMail()));
     c1.setHash("123456789abcdefghijklmnop");
     c1.setSubject("All of the things");
@@ -558,6 +564,79 @@ class ValidationResourceTest {
         .then()
         .statusCode(403)
         .body("passed", is(false), "errorCount", is(1));
+  }
+
+  @Test
+  void validateNoECA_committer() throws URISyntaxException {
+    // set up test users
+    GitUser g1 = new GitUser();
+    g1.setName("Newbie Anon");
+    g1.setMail("newbie@important.co");
+
+    GitUser g2 = new GitUser();
+    g2.setName("The Wizard");
+    g2.setMail("code.wiz@important.co");
+
+    List<Commit> commits = new ArrayList<>();
+    // create sample commits
+    Commit c1 = new Commit();
+    c1.setAuthor(g2);
+    c1.setCommitter(g1);
+    c1.setBody(String.format("Signed-off-by: %s <%s>", g2.getName(), g2.getMail()));
+    c1.setHash("123456789abcdefghijklmnop");
+    c1.setSubject("All of the things");
+    c1.setParents(Arrays.asList("46bb69bf6aa4ed26b2bf8c322ae05bef0bcc5c10"));
+    commits.add(c1);
+
+    ValidationRequest vr = new ValidationRequest();
+    vr.setProvider(ProviderType.GITHUB);
+    vr.setRepoUrl(new URI("http://www.github.com/eclipsefdn/sample"));
+    vr.setCommits(commits);
+    // test output w/ assertions
+    // Error count should be 2 - first is committer access, then proxy push violation
+    // Status 403 (forbidden) is the standard return for invalid requests
+    given()
+        .body(vr)
+        .contentType(ContentType.JSON)
+        .when()
+        .post("/eca")
+        .then()
+        .statusCode(403)
+        .body("passed", is(false), "errorCount", is(2));
+  }
+  @Test
+  void validateNoECA_both() throws URISyntaxException {
+    // set up test users
+    GitUser g1 = new GitUser();
+    g1.setName("Newbie Anon");
+    g1.setMail("newbie@important.co");
+
+    List<Commit> commits = new ArrayList<>();
+    // create sample commits
+    Commit c1 = new Commit();
+    c1.setAuthor(g1);
+    c1.setCommitter(g1);
+    c1.setBody(String.format("Signed-off-by: %s <%s>", g1.getName(), g1.getMail()));
+    c1.setHash("123456789abcdefghijklmnop");
+    c1.setSubject("All of the things");
+    c1.setParents(Arrays.asList("46bb69bf6aa4ed26b2bf8c322ae05bef0bcc5c10"));
+    commits.add(c1);
+
+    ValidationRequest vr = new ValidationRequest();
+    vr.setProvider(ProviderType.GITHUB);
+    vr.setRepoUrl(new URI("http://www.github.com/eclipsefdn/sample"));
+    vr.setCommits(commits);
+    // test output w/ assertions
+    // Should have 2 errors, 1 for author entry and 1 for committer entry
+    // Status 403 (forbidden) is the standard return for invalid requests
+    given()
+        .body(vr)
+        .contentType(ContentType.JSON)
+        .when()
+        .post("/eca")
+        .then()
+        .statusCode(403)
+        .body("passed", is(false), "errorCount", is(2));
   }
 
   @Test

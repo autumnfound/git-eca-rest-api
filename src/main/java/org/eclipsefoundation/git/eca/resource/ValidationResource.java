@@ -199,7 +199,7 @@ public class ValidationResource {
               "Could not find an Eclipse user with mail '%1$s' for author of commit %2$s",
               author.getMail(), c.getHash()),
           c.getHash());
-      addError(response, "Author must have an Eclipse Account", c.getHash());
+      addError(response, "Author must have an Eclipse Account", c.getHash(), APIStatusCode.ERROR_AUTHOR);
       return true;
     }
 
@@ -221,22 +221,26 @@ public class ValidationResource {
               "Could not find an Eclipse user with mail '%1$s' for committer of commit %2$s",
               committer.getMail(), c.getHash()),
           c.getHash());
-      addError(response, "Committing user must have an Eclipse Account", c.getHash());
+      addError(response, "Committing user must have an Eclipse Account", c.getHash(), APIStatusCode.ERROR_COMMITTER);
       return true;
     }
     // validate author access to the current repo
-    validateAuthorAccess(response, c, eclipseAuthor, filteredProjects, provider);
+    validateUserAccess(response, c, eclipseAuthor, filteredProjects, APIStatusCode.ERROR_AUTHOR);
+
+    // check committer general access
+    boolean isCommittingUserCommitter = isCommitter(response, eclipseCommitter, c.getHash(), filteredProjects);
+    validateUserAccessPartial(response, c, eclipseCommitter, isCommittingUserCommitter, APIStatusCode.ERROR_COMMITTER);
 
     // only committers can push on behalf of other users
-    if (response.isTrackedProject()
-        && !eclipseAuthor.equals(eclipseCommitter)
-        && !isCommitter(response, eclipseCommitter, c.getHash(), filteredProjects, provider)) {
+    if (response.isTrackedProject() && !eclipseAuthor.equals(eclipseCommitter) && !isCommittingUserCommitter) {
       addMessage(response, "You are not a project committer.", c.getHash());
       addMessage(response, "Only project committers can push on behalf of others.", c.getHash());
-      addError(response, "You must be a committer to push on behalf of others.", c.getHash());
+      addError(response, "You must be a committer to push on behalf of others.", c.getHash(), APIStatusCode.ERROR_PROXY_PUSH);
     }
     return true;
   }
+
+
 
   /**
    * Validates author access for the current commit. If there are errors, they are recorded in the
@@ -244,34 +248,49 @@ public class ValidationResource {
    *
    * @param r the current response object for the request
    * @param c the commit that is being validated
-   * @param eclipseAuthor the user to validate on a branch
+   * @param eclipseUser the user to validate on a branch
    * @param filteredProjects tracked projects for the current request
-   * @param provider the provider set for the current request
+   * @param errorCode the error code to display if the user does not have access
    */
-  private void validateAuthorAccess(
+  private void validateUserAccess(
       ValidationResponse r,
       Commit c,
-      EclipseUser eclipseAuthor,
-      List<Project> filteredProjects,
-      ProviderType provider) {
-    // check if the author matches to an eclipse user and is a committer
-    if (isCommitter(r, eclipseAuthor, c.getHash(), filteredProjects, provider)) {
-      addMessage(r, "The author is a committer on the project.", c.getHash());
+      EclipseUser eclipseUser,
+      List<Project> filteredProjects, APIStatusCode errorCode) {
+    // call isCommitter inline and pass to partial call 
+    validateUserAccessPartial(r, c, eclipseUser, isCommitter(r, eclipseUser, c.getHash(), filteredProjects), errorCode);
+  }
+
+  /**
+   * Allows for isCommitter to be called external to this method. This was extracted to ensure that isCommitter isn't 
+   * called twice for the same user when checking committer proxy push rules and committer general access.
+   * 
+   * @param r the current response object for the request
+   * @param c the commit that is being validated
+   * @param eclipseUser the user to validate on a branch
+   * @param isCommitter the results of the isCommitter call from this class.
+   * @param errorCode the error code to display if the user does not have access
+   */
+  private void validateUserAccessPartial(ValidationResponse r, Commit c, EclipseUser eclipseUser, 
+        boolean isCommitter, APIStatusCode errorCode) {
+    if (isCommitter) {
+      addMessage(r, String.format("Eclipse user '%s' is a committer on the project.", eclipseUser.getName()), c.getHash());
     } else {
-      addMessage(r, "The author is not a committer on the project.", c.getHash());
+      addMessage(r, String.format("Eclipse user '%s' is not a committer on the project.", eclipseUser.getName()), c.getHash());
       // check if the author is signed off if not a committer
-      if (eclipseAuthor.getEca().isSigned()) {
+      if (eclipseUser.getEca().isSigned()) {
         addMessage(
             r,
-            "The author has a current Eclipse Contributor Agreement (ECA) on file.",
+            String.format("Eclipse user '%s' has a current Eclipse Contributor Agreement (ECA) on file.", eclipseUser.getName()),
             c.getHash());
       } else {
         addMessage(
             r,
-            "The author does not have a current Eclipse Contributor Agreement (ECA) on file.\n"
-                + "If there are multiple commits, please ensure that each author has a ECA.",
+            String.format("Eclipse user '%s' does not have a current Eclipse Contributor Agreement (ECA) on file.\n"
+                + "If there are multiple commits, please ensure that each author has a ECA.", eclipseUser.getName()),
             c.getHash());
-        addError(r, "An Eclipse Contributor Agreement is required.", c.getHash());
+        addError(r, String.format("An Eclipse Contributor Agreement is required for Eclipse user '%s'.", eclipseUser.getName()),
+            c.getHash(), errorCode);
       }
     }
   }
@@ -288,15 +307,13 @@ public class ValidationResource {
    * @param user the user to validate on a branch
    * @param hash the hash of the commit that is being validated
    * @param filteredProjects tracked projects for the current request
-   * @param provider the provider set for the current request
    * @return true if user is considered a committer, false otherwise.
    */
   private boolean isCommitter(
       ValidationResponse r,
       EclipseUser user,
       String hash,
-      List<Project> filteredProjects,
-      ProviderType provider) {
+      List<Project> filteredProjects) {
     // iterate over filtered projects
     for (Project p : filteredProjects) {
       LOGGER.debug("Checking project '{}' for user '{}'", p.getName(), user.getName());
